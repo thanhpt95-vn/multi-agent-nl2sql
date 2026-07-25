@@ -5,7 +5,7 @@ Multi-agent Natural Language to SQL (NL2SQL) with [CrewAI](https://www.crewai.co
 - **4-step baseline:** Analysis → Schema → Generation → Validation  
 - **6-step proposed:** adds Query Planning + SQL Refinement
 
-This public package is for **advisor / reproducibility review**: runnable code, Spider questions/schema, published predictions, and the Dr.Spider-340 diagnostic subset (IDs + predictions). Large SQLite dumps and raw LLM traces are omitted.
+This public package is for **advisor / reproducibility review**: runnable code, Spider questions/schema, published predictions, per-question agent traces, and the Dr.Spider-340 diagnostic subset (IDs + predictions). Large Spider SQLite dumps are not vendored in git; download them separately (link below).
 
 ## Results snapshot
 
@@ -78,12 +78,22 @@ pip install -r requirements.txt
 cp .env.example .env   # add OPENAI_API_KEY / GEMINI_API_KEY / etc.
 ```
 
-Spider SQLite databases (not vendored):
+### Spider SQLite databases (not vendored in git)
+
+Download the full Spider `database/` bundle (`spider_data.zip`) from Google Drive:
+
+- [spider_data.zip](https://drive.google.com/file/d/19RYo6LWT6iaiLb4LtaR0cr6XBuAyWrJY/view?usp=sharing)
+
+Then unpack and point the eval harness at the `database/` folder inside the archive:
 
 ```bash
-export SPIDER_DATABASE_DIR=/path/to/spider/database
+# example: unzip to a local path, then sync into the eval tree
+unzip spider_data.zip -d /path/to/spider_data
+export SPIDER_DATABASE_DIR=/path/to/spider_data/database
 ./scripts/setup_spider_databases.sh
 ```
+
+Expected layout after setup: `experiments/test-suite-sql-eval/database/<db_id>/<db_id>.sqlite`.
 
 Dr.Spider full release (for re-running the 340 subset) must be downloaded separately from the official diagnostic-robustness-text-to-sql repository; paths are recorded in `experiments/round2/drspider/*.json`.
 
@@ -105,7 +115,7 @@ python scripts/smoke_test_drspider30.py --all --pipeline both --output-dir outpu
 
 ## What is intentionally not included
 
-- `*.sqlite` / Spider & Dr.Spider database trees  
+- Spider / Dr.Spider SQLite trees in git (Spider full DB: download [spider_data.zip](https://drive.google.com/file/d/19RYo6LWT6iaiLb4LtaR0cr6XBuAyWrJY/view?usp=sharing))  
 - backups (`*.bak*`), IDE/agent memory, paper drafts, API keys
 
 Per-question agent traces are included under `output/**/raw_responses/` (Spider 1,034 + Dr.Spider-340 for both pipelines).
