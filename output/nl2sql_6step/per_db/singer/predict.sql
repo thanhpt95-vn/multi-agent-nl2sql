@@ -1,30 +1,30 @@
-SELECT COUNT(*) AS count FROM singer	singer
-SELECT COUNT(*) FROM singer;	singer
-SELECT Name FROM singer ORDER BY Net_Worth_Millions ASC;	singer
-SELECT Name FROM singer ORDER BY Net_Worth_Millions ASC	singer
-SELECT Birth_Year, Citizenship FROM singer	singer
-SELECT Birth_Year, Citizenship FROM singer;	singer
+select count(*) from singer	singer
+select count(*) from singer	singer
+select Name from singer order by Net_Worth_Millions asc	singer
+select Name from singer order by Net_Worth_Millions asc	singer
+select Birth_Year, Citizenship from singer	singer
+select Birth_Year, Citizenship from singer	singer
 SELECT Name FROM singer WHERE Citizenship != "France"	singer
 SELECT Name FROM singer WHERE Citizenship != "France"	singer
-SELECT Name FROM singer WHERE Birth_Year = 1948 OR Birth_Year = 1949	singer
-SELECT Name FROM singer WHERE Birth_Year = 1948 OR Birth_Year = 1949	singer
-SELECT Name FROM singer ORDER BY Net_Worth_Millions DESC LIMIT 1	singer
-SELECT Name FROM singer ORDER BY Net_Worth_Millions DESC LIMIT 1	singer
-SELECT Citizenship , COUNT(1) FROM singer GROUP BY Citizenship	singer
-SELECT Citizenship, COUNT(*) AS singer_count FROM singer GROUP BY Citizenship	singer
-SELECT Citizenship FROM singer GROUP BY Citizenship ORDER BY COUNT(*) DESC	singer
-SELECT Citizenship FROM singer GROUP BY Citizenship ORDER BY COUNT(*) DESC LIMIT 1	singer
-SELECT Citizenship, MAX(Net_Worth_Millions) FROM singer GROUP BY Citizenship	singer
-SELECT Citizenship, MAX(Net_Worth_Millions) AS maximum_net_worth FROM singer GROUP BY Citizenship	singer
-SELECT b.Title , a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID	singer
-SELECT song.Title, singer.Name FROM song JOIN singer ON song.Singer_ID = singer.Singer_ID	singer
-SELECT DISTINCT s.Name FROM singer s JOIN song sg ON s.Singer_ID = sg.Singer_ID WHERE sg.Sales > 300000	singer
-SELECT DISTINCT singer.Name FROM singer JOIN song ON singer.Singer_ID = song.Singer_ID WHERE song.Sales > 300000	singer
-SELECT a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID GROUP BY a.Name HAVING COUNT(*) > 1	singer
-SELECT s.Name FROM singer AS s JOIN song AS sg ON s.Singer_ID = sg.Singer_ID GROUP BY s.Name HAVING COUNT(*) > 1	singer
-SELECT singer.Name, SUM(song.Sales) AS total_sales FROM singer JOIN song ON singer.Singer_ID = song.Singer_ID GROUP BY singer.Name	singer
-SELECT T1.Name, SUM(T2.Sales) AS total_sales FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID = T2.Singer_ID GROUP BY T1.Name	singer
-SELECT Name FROM singer WHERE Singer_ID NOT IN (SELECT Singer_ID FROM song)	singer
-SELECT T1.Name FROM singer AS T1 LEFT JOIN song AS T2 ON T1.Singer_ID = T2.Singer_ID WHERE T2.Singer_ID IS NULL	singer
-SELECT Citizenship FROM singer WHERE (Birth_Year < 1945 INTERSECT SELECT Citizenship FROM singer WHERE Birth_Year > 1955)	singer
-SELECT Citizenship FROM singer WHERE (Birth_Year < 1945 INTERSECT SELECT Citizenship FROM singer WHERE Birth_Year > 1955)	singer
+SELECT Name FROM singer WHERE Birth_Year  =  1948 OR Birth_Year  =  1949	singer
+SELECT Name FROM singer WHERE Birth_Year  =  1948 OR Birth_Year  =  1949	singer
+select Name from singer order by Net_Worth_Millions desc limit 1	singer
+select Name from singer order by Net_Worth_Millions desc limit 1	singer
+SELECT Citizenship ,  COUNT(*) FROM singer GROUP BY Citizenship	singer
+select Citizenship, count(*) from singer group by Citizenship	singer
+select Citizenship from singer group by Citizenship order by count(*) desc limit 1	singer
+select Citizenship from singer group by Citizenship order by count(*) desc limit 1	singer
+select Citizenship, max(Net_Worth_Millions) from singer group by Citizenship	singer
+select Citizenship, max(Net_Worth_Millions) from singer group by Citizenship	singer
+SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID	singer
+select song.Title, singer.Name from song join singer on song.Singer_ID = singer.Singer_ID	singer
+select distinct T1.Name from singer as T1 join song as T2 on T1.Singer_ID = T2.Singer_ID where T2.Sales > 300000	singer
+select distinct singer.Name from singer join song on singer.Singer_ID = song.Singer_ID where song.Sales > 300000	singer
+SELECT T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID GROUP BY T1.Name HAVING COUNT(*)  >  1	singer
+select s.Name from singer as s join song as sg on s.Singer_ID = sg.Singer_ID group by s.Name having count(*) > 1	singer
+select singer.Name, sum(song.Sales) from singer join song on singer.Singer_ID = song.Singer_ID group by singer.Name	singer
+select T1.Name, sum(T2.Sales) from singer as T1 join song as T2 on T1.Singer_ID = T2.Singer_ID group by T1.Name	singer
+select Name from singer where Singer_ID not in (select Singer_ID from song)	singer
+select T1.Name from singer as T1 left join song as T2 on T1.Singer_ID = T2.Singer_ID where T2.Singer_ID is null	singer
+select Citizenship from singer where Birth_Year < 1945 intersect select Citizenship from singer where Birth_Year > 1955	singer
+select Citizenship from singer where Birth_Year < 1945 intersect select Citizenship from singer where Birth_Year > 1955	singer

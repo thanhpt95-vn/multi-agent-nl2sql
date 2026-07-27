@@ -1,84 +1,84 @@
-SELECT COUNT(*) FROM Documents	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS count FROM Documents	cre_Doc_Template_Mgt
-SELECT Document_ID, Document_Name, Document_Description FROM Documents	cre_Doc_Template_Mgt
-SELECT Document_ID, Document_Name, Document_Description FROM Documents	cre_Doc_Template_Mgt
-SELECT Document_Name, Template_ID FROM Documents WHERE Document_Description LIKE '%w%'	cre_Doc_Template_Mgt
-SELECT Document_Name, Template_ID FROM Documents WHERE Document_Description LIKE '%w%'	cre_Doc_Template_Mgt
-SELECT Document_ID, Template_ID, Document_Description FROM Documents WHERE Document_Name = 'Robbin CV'	cre_Doc_Template_Mgt
-SELECT Document_ID, Template_ID, Document_Description FROM Documents WHERE Document_Name = 'Robbin CV'	cre_Doc_Template_Mgt
-SELECT COUNT(DISTINCT Template_ID) AS count FROM Documents	cre_Doc_Template_Mgt
-SELECT COUNT(DISTINCT Templates.Template_ID) AS count FROM Documents JOIN Templates ON Documents.Template_ID = Templates.Template_ID	cre_Doc_Template_Mgt
-SELECT COUNT(*) FROM Documents JOIN Templates ON Documents.Template_ID = Templates.Template_ID WHERE Templates.Template_Type_Code = 'PPT'	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS count FROM Documents JOIN Templates ON Documents.Template_ID = Templates.Template_ID WHERE Templates.Template_Type_Code = 'PPT'	cre_Doc_Template_Mgt
-SELECT Templates.Template_ID, COUNT(*) AS number_of_documents FROM Templates JOIN Documents ON Templates.Template_ID = Documents.Template_ID GROUP BY Templates.Template_ID	cre_Doc_Template_Mgt
-SELECT T1.Template_ID, COUNT(*) AS count FROM Templates AS T1 JOIN Documents AS T2 ON T1.Template_ID = T2.Template_ID GROUP BY T1.Template_ID	cre_Doc_Template_Mgt
-SELECT Templates.Template_ID, Templates.Template_Type_Code FROM Templates JOIN Documents ON Templates.Template_ID = Documents.Template_ID GROUP BY Templates.Template_ID ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT T.Template_ID, T.Template_Type_Code FROM Templates AS T JOIN Documents AS D ON T.Template_ID = D.Template_ID GROUP BY T.Template_ID, T.Template_Type_Code ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Templates.Template_ID FROM Templates INNER JOIN Documents ON Templates.Template_ID = Documents.Template_ID GROUP BY Templates.Template_ID HAVING COUNT(*) > 1	cre_Doc_Template_Mgt
-SELECT Template_ID FROM Documents GROUP BY Template_ID HAVING COUNT(1) > 1	cre_Doc_Template_Mgt
+select count(*) from Documents	cre_Doc_Template_Mgt
+select count(*) from Documents	cre_Doc_Template_Mgt
+select Document_ID, Document_Name, Document_Description from Documents	cre_Doc_Template_Mgt
+select Document_ID, Document_Name, Document_Description from Documents	cre_Doc_Template_Mgt
+select Document_Name, Template_ID from Documents where Document_Description like "%w%"	cre_Doc_Template_Mgt
+select Document_Name, Template_ID from Documents where Document_Description like "%w%"	cre_Doc_Template_Mgt
+select Document_ID, Template_ID, Document_Description from Documents where Document_Name = "Robbin CV"	cre_Doc_Template_Mgt
+select Document_ID, Template_ID, Document_Description from Documents where Document_Name = "Robbin CV"	cre_Doc_Template_Mgt
+select count(distinct Template_ID) from Documents	cre_Doc_Template_Mgt
+select count(distinct Templates.Template_ID) from Documents join Templates on Documents.Template_ID = Templates.Template_ID	cre_Doc_Template_Mgt
+select count(*) from Documents join Templates on Documents.Template_ID = Templates.Template_ID where Templates.Template_Type_Code = "PPT"	cre_Doc_Template_Mgt
+select count(*) from Documents join Templates on Documents.Template_ID = Templates.Template_ID where Templates.Template_Type_Code = "PPT"	cre_Doc_Template_Mgt
+select Templates.Template_ID, count(*) from Templates join Documents on Templates.Template_ID = Documents.Template_ID group by Templates.Template_ID	cre_Doc_Template_Mgt
+select T1.Template_ID, count(*) from Templates as T1 join Documents as T2 on T1.Template_ID = T2.Template_ID group by T1.Template_ID	cre_Doc_Template_Mgt
+select Templates.Template_ID, Templates.Template_Type_Code from Templates join Documents on Templates.Template_ID = Documents.Template_ID group by Templates.Template_ID order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select T.Template_ID, T.Template_Type_Code from Templates as T join Documents as D on T.Template_ID = D.Template_ID group by T.Template_ID, T.Template_Type_Code order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select Templates.Template_ID from Templates inner join Documents on Templates.Template_ID = Documents.Template_ID group by Templates.Template_ID having count(*) > 1	cre_Doc_Template_Mgt
+select Template_ID from Documents group by Template_ID having count(*) > 1	cre_Doc_Template_Mgt
 SELECT template_id FROM Templates EXCEPT SELECT template_id FROM Documents	cre_Doc_Template_Mgt
 SELECT template_id FROM Templates EXCEPT SELECT template_id FROM Documents	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS template_count FROM Templates	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS count FROM Templates	cre_Doc_Template_Mgt
-SELECT Template_ID, Version_Number, Template_Type_Code FROM Templates	cre_Doc_Template_Mgt
-SELECT Template_ID, Version_Number, Template_Type_Code FROM Templates	cre_Doc_Template_Mgt
-SELECT DISTINCT Template_Type_Code FROM Ref_Template_Types	cre_Doc_Template_Mgt
-SELECT DISTINCT Template_Type_Code FROM Ref_Template_Types	cre_Doc_Template_Mgt
-SELECT template_id FROM Templates WHERE (template_type_code = "PP" OR template_type_code = "PPT")	cre_Doc_Template_Mgt
-SELECT template_id FROM Templates WHERE (template_type_code = "PP" OR template_type_code = "PPT")	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS count FROM Templates WHERE Template_Type_Code = 'CV'	cre_Doc_Template_Mgt
-SELECT COUNT(*) FROM Templates WHERE Template_Type_Code = 'CV';	cre_Doc_Template_Mgt
-SELECT Version_Number, Template_Type_Code FROM Templates WHERE Version_Number > 5	cre_Doc_Template_Mgt
-SELECT Version_Number, Template_Type_Code FROM Templates WHERE Version_Number > 5;	cre_Doc_Template_Mgt
-SELECT Ref_Template_Types.Template_Type_Code, COUNT(*) AS number_of_templates FROM Ref_Template_Types JOIN Templates ON Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code GROUP BY Ref_Template_Types.Template_Type_Code	cre_Doc_Template_Mgt
-SELECT Template_Type_Code, COUNT(*) AS number_of_templates FROM Templates GROUP BY Template_Type_Code	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Templates GROUP BY Template_Type_Code ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Templates.Template_Type_Code FROM Templates GROUP BY Templates.Template_Type_Code ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Templates GROUP BY Template_Type_Code HAVING COUNT(1) < 3	cre_Doc_Template_Mgt
-SELECT T1.Template_Type_Code FROM Ref_Template_Types AS T1 JOIN Templates AS T2 ON T1.Template_Type_Code = T2.Template_Type_Code GROUP BY T1.Template_Type_Code HAVING COUNT(*) < 3	cre_Doc_Template_Mgt
-SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0	cre_Doc_Template_Mgt
-SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0	cre_Doc_Template_Mgt
-SELECT T1.Template_Type_Code FROM Documents AS T1 JOIN Templates AS T2 ON T1.Template_ID = T2.Template_ID WHERE T1.Document_Name = 'Data base'	cre_Doc_Template_Mgt
-SELECT a.template_type_code FROM Templates AS a INNER JOIN Documents AS b ON a.template_id = b.template_id WHERE b.document_name = "Data base"	cre_Doc_Template_Mgt
-SELECT T1.Document_Name FROM Documents AS T1 JOIN Templates AS T2 ON T1.Template_ID = T2.Template_ID WHERE T2.Template_Type_Code = 'BK'	cre_Doc_Template_Mgt
-SELECT T1.Document_Name FROM Documents AS T1 JOIN Templates AS T2 ON T1.Template_ID = T2.Template_ID WHERE T2.Template_Type_Code = 'BK'	cre_Doc_Template_Mgt
-SELECT Ref_Template_Types.Template_Type_Code, COUNT(*) AS number_of_documents FROM Ref_Template_Types JOIN Templates ON Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code JOIN Documents ON Templates.Template_ID = Documents.Template_ID GROUP BY Ref_Template_Types.Template_Type_Code	cre_Doc_Template_Mgt
-SELECT a.template_type_code , count(*) FROM Templates AS a INNER JOIN Documents AS b ON a.template_id = b.template_id GROUP BY a.template_type_code	cre_Doc_Template_Mgt
-SELECT Ref_Template_Types.Template_Type_Code FROM Documents JOIN Templates ON Documents.Template_ID = Templates.Template_ID JOIN Ref_Template_Types ON Templates.Template_Type_Code = Ref_Template_Types.Template_Type_Code GROUP BY Ref_Template_Types.Template_Type_Code ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Templates.Template_Type_Code FROM Documents JOIN Templates ON Documents.Template_ID = Templates.Template_ID GROUP BY Templates.Template_Type_Code ORDER BY COUNT(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Ref_Template_Types WHERE Template_Type_Code NOT IN (SELECT Template_Type_Code FROM Templates)	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Ref_Template_Types EXCEPT SELECT DISTINCT t.Template_Type_Code FROM Templates t JOIN Documents d ON t.Template_ID = d.Template_ID	cre_Doc_Template_Mgt
-SELECT Template_Type_Code, Template_Type_Description FROM Ref_Template_Types	cre_Doc_Template_Mgt
-SELECT Template_Type_Code, Template_Type_Description FROM Ref_Template_Types	cre_Doc_Template_Mgt
-SELECT Template_Type_Description FROM Ref_Template_Types WHERE Template_Type_Code = 'AD'	cre_Doc_Template_Mgt
-SELECT Template_Type_Description FROM Ref_Template_Types WHERE Template_Type_Code = 'AD'	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Ref_Template_Types WHERE Template_Type_Description = 'Book'	cre_Doc_Template_Mgt
-SELECT Template_Type_Code FROM Ref_Template_Types WHERE Template_Type_Description = 'Book'	cre_Doc_Template_Mgt
-SELECT DISTINCT Ref_Template_Types.Template_Type_Description FROM Ref_Template_Types JOIN Templates ON Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code JOIN Documents ON Templates.Template_ID = Documents.Template_ID	cre_Doc_Template_Mgt
-SELECT DISTINCT Ref_Template_Types.Template_Type_Description FROM Ref_Template_Types JOIN Templates ON Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code JOIN Documents ON Templates.Template_ID = Documents.Template_ID	cre_Doc_Template_Mgt
-SELECT Templates.Template_ID FROM Templates JOIN Ref_Template_Types ON Templates.Template_Type_Code = Ref_Template_Types.Template_Type_Code WHERE Ref_Template_Types.Template_Type_Description = 'Presentation'	cre_Doc_Template_Mgt
-SELECT T1.Template_ID FROM Templates AS T1 JOIN Ref_Template_Types AS T2 ON T1.Template_Type_Code = T2.Template_Type_Code WHERE T2.Template_Type_Description = 'Presentation'	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS total_paragraphs FROM Paragraphs;	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS paragraph_count FROM Paragraphs	cre_Doc_Template_Mgt
-SELECT count(*) FROM Paragraphs AS a INNER JOIN Documents AS b ON a.document_ID = b.document_ID WHERE b.document_name = 'Summer Show'	cre_Doc_Template_Mgt
-SELECT COUNT(*) AS paragraph_count FROM Paragraphs JOIN Documents ON Paragraphs.Document_ID = Documents.Document_ID WHERE Documents.Document_Name = 'Summer Show'	cre_Doc_Template_Mgt
-SELECT Paragraph_ID, Document_ID, Paragraph_Text, Other_Details FROM Paragraphs WHERE Paragraph_Text = 'Korea'	cre_Doc_Template_Mgt
-SELECT Paragraph_ID, Document_ID, Paragraph_Text, Other_Details FROM Paragraphs WHERE Paragraph_Text LIKE '%Korea%'	cre_Doc_Template_Mgt
-SELECT Paragraphs.Paragraph_ID, Paragraphs.Paragraph_Text FROM Paragraphs JOIN Documents ON Documents.Document_ID = Paragraphs.Document_ID WHERE Documents.Document_Name = 'Welcome to NY'	cre_Doc_Template_Mgt
-SELECT a.paragraph_id , a.paragraph_text FROM Paragraphs AS a INNER JOIN Documents AS b ON a.document_id = b.document_id WHERE b.Document_Name = 'Welcome to NY'	cre_Doc_Template_Mgt
-SELECT Paragraphs.Paragraph_Text FROM Paragraphs JOIN Documents ON Paragraphs.Document_ID = Documents.Document_ID WHERE Documents.Document_Name = 'Customer reviews'	cre_Doc_Template_Mgt
-SELECT Paragraphs.Paragraph_Text FROM Paragraphs JOIN Documents ON Paragraphs.Document_ID = Documents.Document_ID WHERE Documents.Document_Name = 'Customer reviews'	cre_Doc_Template_Mgt
-SELECT Documents.Document_ID, COUNT(*) AS count_paragraphs FROM Documents JOIN Paragraphs ON Documents.Document_ID = Paragraphs.Document_ID GROUP BY Documents.Document_ID ORDER BY Documents.Document_ID	cre_Doc_Template_Mgt
-SELECT Documents.Document_ID, COUNT(*) AS Number_of_Paragraphs FROM Documents JOIN Paragraphs ON Documents.Document_ID = Paragraphs.Document_ID GROUP BY Documents.Document_ID ORDER BY Documents.Document_ID ASC	cre_Doc_Template_Mgt
-SELECT T1.Document_ID, T1.Document_Name, COUNT(T2.Paragraph_ID) AS number_of_paragraphs FROM Documents AS T1 LEFT JOIN Paragraphs AS T2 ON T1.Document_ID = T2.Document_ID GROUP BY T1.Document_ID, T1.Document_Name	cre_Doc_Template_Mgt
-SELECT T1.Document_ID, T1.Document_Name, COUNT(T2.Paragraph_ID) AS Paragraph_Count FROM Documents AS T1 LEFT JOIN Paragraphs AS T2 ON T1.Document_ID = T2.Document_ID GROUP BY T1.Document_ID	cre_Doc_Template_Mgt
-SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) >= 2	cre_Doc_Template_Mgt
-SELECT T1.Document_ID FROM Documents AS T1 JOIN Paragraphs AS T2 ON T1.Document_ID = T2.Document_ID GROUP BY T1.Document_ID HAVING COUNT(T2.Paragraph_ID) >= 2	cre_Doc_Template_Mgt
-SELECT a.document_id , b.document_name FROM Paragraphs AS a INNER JOIN Documents AS b ON a.document_id = b.document_id GROUP BY a.document_id ORDER BY count(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT a.document_id , b.document_name FROM Paragraphs AS a INNER JOIN Documents AS b ON a.document_id = b.document_id GROUP BY a.document_id ORDER BY count(*) DESC LIMIT 1	cre_Doc_Template_Mgt
-SELECT p.Document_ID FROM Documents AS T1 JOIN Paragraphs AS T2 ON T1.Document_ID = T2.Document_ID GROUP BY p.Document_ID ORDER BY COUNT(*) ASC LIMIT 1	cre_Doc_Template_Mgt
-SELECT Paragraphs.Document_ID FROM Paragraphs GROUP BY Paragraphs.Document_ID ORDER BY COUNT(*) ASC LIMIT 1	cre_Doc_Template_Mgt
+select count(*) from Templates	cre_Doc_Template_Mgt
+select count(*) from Templates	cre_Doc_Template_Mgt
+select Template_ID, Version_Number, Template_Type_Code from Templates	cre_Doc_Template_Mgt
+select Template_ID, Version_Number, Template_Type_Code from Templates	cre_Doc_Template_Mgt
+select distinct Template_Type_Code from Ref_Template_Types	cre_Doc_Template_Mgt
+select distinct Template_Type_Code from Ref_Template_Types	cre_Doc_Template_Mgt
+SELECT template_id FROM Templates WHERE template_type_code  =  "PP" OR template_type_code  =  "PPT"	cre_Doc_Template_Mgt
+SELECT template_id FROM Templates WHERE template_type_code  =  "PP" OR template_type_code  =  "PPT"	cre_Doc_Template_Mgt
+select count(*) from Templates where Template_Type_Code = "CV"	cre_Doc_Template_Mgt
+select count(*) from Templates where Template_Type_Code = "CV"	cre_Doc_Template_Mgt
+select Version_Number, Template_Type_Code from Templates where Version_Number > 5	cre_Doc_Template_Mgt
+select Version_Number, Template_Type_Code from Templates where Version_Number > 5	cre_Doc_Template_Mgt
+select Ref_Template_Types.Template_Type_Code, count(*) from Ref_Template_Types join Templates on Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code group by Ref_Template_Types.Template_Type_Code	cre_Doc_Template_Mgt
+select Template_Type_Code, count(*) from Templates group by Template_Type_Code	cre_Doc_Template_Mgt
+select Template_Type_Code from Templates group by Template_Type_Code order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select Templates.Template_Type_Code from Templates group by Templates.Template_Type_Code order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select Template_Type_Code from Templates group by Template_Type_Code having count(*) < 3	cre_Doc_Template_Mgt
+select T1.Template_Type_Code from Ref_Template_Types as T1 join Templates as T2 on T1.Template_Type_Code = T2.Template_Type_Code group by T1.Template_Type_Code having count(*) < 3	cre_Doc_Template_Mgt
+SELECT min(Version_Number) ,  template_type_code FROM Templates	cre_Doc_Template_Mgt
+SELECT min(Version_Number) ,  template_type_code FROM Templates	cre_Doc_Template_Mgt
+select T1.Template_Type_Code from Documents as T1 join Templates as T2 on T1.Template_ID = T2.Template_ID where T1.Document_Name = "Data base"	cre_Doc_Template_Mgt
+SELECT T1.template_type_code FROM Templates AS T1 JOIN Documents AS T2 ON T1.template_id  =  T2.template_id WHERE T2.document_name  =  "Data base"	cre_Doc_Template_Mgt
+select T1.Document_Name from Documents as T1 join Templates as T2 on T1.Template_ID = T2.Template_ID where T2.Template_Type_Code = "BK"	cre_Doc_Template_Mgt
+select T1.Document_Name from Documents as T1 join Templates as T2 on T1.Template_ID = T2.Template_ID where T2.Template_Type_Code = "BK"	cre_Doc_Template_Mgt
+select Ref_Template_Types.Template_Type_Code, count(*) from Ref_Template_Types join Templates on Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code join Documents on Templates.Template_ID = Documents.Template_ID group by Ref_Template_Types.Template_Type_Code	cre_Doc_Template_Mgt
+SELECT T1.template_type_code ,  count(*) FROM Templates AS T1 JOIN Documents AS T2 ON T1.template_id  =  T2.template_id GROUP BY T1.template_type_code	cre_Doc_Template_Mgt
+select Ref_Template_Types.Template_Type_Code from Documents join Templates on Documents.Template_ID = Templates.Template_ID join Ref_Template_Types on Templates.Template_Type_Code = Ref_Template_Types.Template_Type_Code group by Ref_Template_Types.Template_Type_Code order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select Templates.Template_Type_Code from Documents join Templates on Documents.Template_ID = Templates.Template_ID group by Templates.Template_Type_Code order by count(*) desc limit 1	cre_Doc_Template_Mgt
+select Template_Type_Code from Ref_Template_Types where Template_Type_Code not in (select Template_Type_Code from Templates)	cre_Doc_Template_Mgt
+select Template_Type_Code from Ref_Template_Types except select distinct t.Template_Type_Code from Templates t join Documents d on t.Template_ID = d.Template_ID	cre_Doc_Template_Mgt
+select Template_Type_Code, Template_Type_Description from Ref_Template_Types	cre_Doc_Template_Mgt
+select Template_Type_Code, Template_Type_Description from Ref_Template_Types	cre_Doc_Template_Mgt
+select Template_Type_Description from Ref_Template_Types where Template_Type_Code = "AD"	cre_Doc_Template_Mgt
+select Template_Type_Description from Ref_Template_Types where Template_Type_Code = "AD"	cre_Doc_Template_Mgt
+select Template_Type_Code from Ref_Template_Types where Template_Type_Description = "Book"	cre_Doc_Template_Mgt
+select Template_Type_Code from Ref_Template_Types where Template_Type_Description = "Book"	cre_Doc_Template_Mgt
+select distinct Ref_Template_Types.Template_Type_Description from Ref_Template_Types join Templates on Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code join Documents on Templates.Template_ID = Documents.Template_ID	cre_Doc_Template_Mgt
+select distinct Ref_Template_Types.Template_Type_Description from Ref_Template_Types join Templates on Ref_Template_Types.Template_Type_Code = Templates.Template_Type_Code join Documents on Templates.Template_ID = Documents.Template_ID	cre_Doc_Template_Mgt
+select Templates.Template_ID from Templates join Ref_Template_Types on Templates.Template_Type_Code = Ref_Template_Types.Template_Type_Code where Ref_Template_Types.Template_Type_Description = "Presentation"	cre_Doc_Template_Mgt
+select T1.Template_ID from Templates as T1 join Ref_Template_Types as T2 on T1.Template_Type_Code = T2.Template_Type_Code where T2.Template_Type_Description = "Presentation"	cre_Doc_Template_Mgt
+select count(*) from Paragraphs	cre_Doc_Template_Mgt
+select count(*) from Paragraphs	cre_Doc_Template_Mgt
+SELECT count(*) FROM Paragraphs AS T1 JOIN Documents AS T2 ON T1.document_ID  =  T2.document_ID WHERE T2.document_name  =  'Summer Show'	cre_Doc_Template_Mgt
+select count(*) from Paragraphs join Documents on Paragraphs.Document_ID = Documents.Document_ID where Documents.Document_Name = "Summer Show"	cre_Doc_Template_Mgt
+select Paragraph_ID, Document_ID, Paragraph_Text, Other_Details from Paragraphs where Paragraph_Text = "Korea"	cre_Doc_Template_Mgt
+select Paragraph_ID, Document_ID, Paragraph_Text, Other_Details from Paragraphs where Paragraph_Text like "%Korea%"	cre_Doc_Template_Mgt
+select Paragraphs.Paragraph_ID, Paragraphs.Paragraph_Text from Paragraphs join Documents on Documents.Document_ID = Paragraphs.Document_ID where Documents.Document_Name = "Welcome to NY"	cre_Doc_Template_Mgt
+SELECT T1.paragraph_id ,   T1.paragraph_text FROM Paragraphs AS T1 JOIN Documents AS T2 ON T1.document_id  =  T2.document_id WHERE T2.Document_Name  =  'Welcome to NY'	cre_Doc_Template_Mgt
+select Paragraphs.Paragraph_Text from Paragraphs join Documents on Paragraphs.Document_ID = Documents.Document_ID where Documents.Document_Name = "Customer reviews"	cre_Doc_Template_Mgt
+select Paragraphs.Paragraph_Text from Paragraphs join Documents on Paragraphs.Document_ID = Documents.Document_ID where Documents.Document_Name = "Customer reviews"	cre_Doc_Template_Mgt
+select Documents.Document_ID, count(*) from Documents join Paragraphs on Documents.Document_ID = Paragraphs.Document_ID group by Documents.Document_ID order by Documents.Document_ID	cre_Doc_Template_Mgt
+select Documents.Document_ID, count(*) from Documents join Paragraphs on Documents.Document_ID = Paragraphs.Document_ID group by Documents.Document_ID order by Documents.Document_ID asc	cre_Doc_Template_Mgt
+select T1.Document_ID, T1.Document_Name, count(T2.Paragraph_ID) from Documents as T1 left join Paragraphs as T2 on T1.Document_ID = T2.Document_ID group by T1.Document_ID, T1.Document_Name	cre_Doc_Template_Mgt
+select T1.Document_ID, T1.Document_Name, count(T2.Paragraph_ID) from Documents as T1 left join Paragraphs as T2 on T1.Document_ID = T2.Document_ID group by T1.Document_ID	cre_Doc_Template_Mgt
+SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*)  >=  2	cre_Doc_Template_Mgt
+select T1.Document_ID from Documents as T1 join Paragraphs as T2 on T1.Document_ID = T2.Document_ID group by T1.Document_ID having count(T2.Paragraph_ID) >= 2	cre_Doc_Template_Mgt
+SELECT T1.document_id ,  T2.document_name FROM Paragraphs AS T1 JOIN Documents AS T2 ON T1.document_id  =  T2.document_id GROUP BY T1.document_id ORDER BY count(*) DESC LIMIT 1	cre_Doc_Template_Mgt
+SELECT T1.document_id ,  T2.document_name FROM Paragraphs AS T1 JOIN Documents AS T2 ON T1.document_id  =  T2.document_id GROUP BY T1.document_id ORDER BY count(*) DESC LIMIT 1	cre_Doc_Template_Mgt
+select p.Document_ID from Documents as T1 join Paragraphs as T2 on T1.Document_ID = T2.Document_ID group by p.Document_ID order by count(*) asc limit 1	cre_Doc_Template_Mgt
+select Paragraphs.Document_ID from Paragraphs group by Paragraphs.Document_ID order by count(*) asc limit 1	cre_Doc_Template_Mgt
 SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) BETWEEN 1 AND 2	cre_Doc_Template_Mgt
 SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) BETWEEN 1 AND 2	cre_Doc_Template_Mgt
-SELECT document_id FROM Paragraphs WHERE (paragraph_text = 'Brazil' INTERSECT SELECT document_id FROM Paragraphs WHERE paragraph_text = 'Ireland')	cre_Doc_Template_Mgt
-SELECT document_id FROM Paragraphs WHERE (paragraph_text = 'Brazil' INTERSECT SELECT document_id FROM Paragraphs WHERE paragraph_text = 'Ireland')	cre_Doc_Template_Mgt
+SELECT document_id FROM Paragraphs WHERE paragraph_text  =  'Brazil' INTERSECT SELECT document_id FROM Paragraphs WHERE paragraph_text  =  'Ireland'	cre_Doc_Template_Mgt
+SELECT document_id FROM Paragraphs WHERE paragraph_text  =  'Brazil' INTERSECT SELECT document_id FROM Paragraphs WHERE paragraph_text  =  'Ireland'	cre_Doc_Template_Mgt

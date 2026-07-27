@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 0.989,
-      "raw_response": "{\"sql\": \"SELECT count(*) FROM student AS a INNER JOIN has_pet AS b ON a.stuid = b.stuid WHERE a.age > 20\"}",
+      "raw_response": "{\"sql\": \"SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20\"}",
       "token_usage": {
         "total_tokens": 1846,
         "prompt_tokens": 1796,
@@ -65,7 +65,7 @@
       "step_name": "refine_sql",
       "attempt": 1,
       "elapsed_seconds": 2.507,
-      "raw_response": "{\"sql\": \"SELECT count(*) FROM student AS a INNER JOIN has_pet AS b ON a.stuid = b.stuid WHERE a.age > 20\", \"notes\": \"The initial SQL was correct in counting the number of pets owned by students older than 20 without using a DISTINCT clause since the join won't result in duplicated rows due to primary-foreign key relationship.\", \"diagnostics\": [\"Ensured alignment with expected_output_fields by maintaining COUNT(*).\", \"The join condition was correct and necessary for the task.\", \"No unnecessary GROUP BY as aggregation handles without it.\"]}",
+      "raw_response": "{\"sql\": \"SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20\", \"notes\": \"The initial SQL was correct in counting the number of pets owned by students older than 20 without using a DISTINCT clause since the join won't result in duplicated rows due to primary-foreign key relationship.\", \"diagnostics\": [\"Ensured alignment with expected_output_fields by maintaining COUNT(*).\", \"The join condition was correct and necessary for the task.\", \"No unnecessary GROUP BY as aggregation handles without it.\"]}",
       "token_usage": {
         "total_tokens": 1530,
         "prompt_tokens": 1394,
@@ -79,7 +79,7 @@
       "step_name": "validate_sql",
       "attempt": 1,
       "elapsed_seconds": 8.446,
-      "raw_response": "```json\n{\"sql\": \"SELECT count(*) FROM student AS a INNER JOIN has_pet AS b ON a.stuid = b.stuid WHERE a.age > 20\", \"explain\": \"The SQL is correct. The `SELECT COUNT(*)` matches the requested output field 'number_of_pets' for a total count. The join and WHERE clause correctly filter for pets owned by students older than 20. The `group_by` hint in the analysis was not applied because the question asks for a single total 'number_of_pets', not a count per student, making `GROUP BY` unnecessary.\", \"error\": \"\"}\n```",
+      "raw_response": "```json\n{\"sql\": \"SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20\", \"explain\": \"The SQL is correct. The `SELECT COUNT(*)` matches the requested output field 'number_of_pets' for a total count. The join and WHERE clause correctly filter for pets owned by students older than 20. The `group_by` hint in the analysis was not applied because the question asks for a single total 'number_of_pets', not a count per student, making `GROUP BY` unnecessary.\", \"error\": \"\"}\n```",
       "token_usage": {
         "total_tokens": 2953,
         "prompt_tokens": 1314,
@@ -90,7 +90,7 @@
       "timestamp": "2026-07-24T15:49:00.669481"
     }
   ],
-  "final_sql": "SELECT count(*) FROM student AS a INNER JOIN has_pet AS b ON a.stuid = b.stuid WHERE a.age > 20",
+  "final_sql": "SELECT count(*) FROM student AS T1 JOIN has_pet AS T2 ON T1.stuid  =  T2.stuid WHERE T1.age  >  20",
   "explain": "The SQL is correct. The `SELECT COUNT(*)` matches the requested output field 'number_of_pets' for a total count. The join and WHERE clause correctly filter for pets owned by students older than 20. The `group_by` hint in the analysis was not applied because the question asks for a single total 'number_of_pets', not a count per student, making `GROUP BY` unnecessary.",
   "error": "",
   "timestamp": "2026-07-24T15:49:00.671158"

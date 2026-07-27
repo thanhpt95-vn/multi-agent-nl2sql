@@ -1,56 +1,56 @@
-SELECT COUNT(*) FROM Highschooler	network_1
-SELECT COUNT(*) AS count FROM Highschooler	network_1
-SELECT name, grade FROM Highschooler	network_1
-SELECT name, grade FROM Highschooler	network_1
-SELECT grade FROM Highschooler	network_1
-SELECT grade FROM Highschooler	network_1
-SELECT grade FROM Highschooler WHERE name = 'Kyle'	network_1
-SELECT grade FROM Highschooler WHERE name = 'Kyle'	network_1
-SELECT name FROM Highschooler WHERE grade = 10	network_1
-SELECT name FROM Highschooler WHERE grade = 10	network_1
-SELECT ID FROM Highschooler WHERE name = 'Kyle'	network_1
-SELECT ID FROM Highschooler WHERE name = 'Kyle'	network_1
-SELECT count(*) FROM Highschooler WHERE (grade = 9 OR grade = 10)	network_1
-SELECT count(*) FROM Highschooler WHERE (grade = 9 OR grade = 10)	network_1
-SELECT grade , COUNT(1) FROM Highschooler GROUP BY grade	network_1
-SELECT grade, COUNT(*) AS highschooler_count FROM Highschooler GROUP BY grade	network_1
-SELECT grade, COUNT(*) AS highschooler_count FROM Highschooler GROUP BY grade ORDER BY highschooler_count DESC LIMIT 1	network_1
-SELECT grade FROM Highschooler GROUP BY grade ORDER BY COUNT(*) DESC LIMIT 1	network_1
-SELECT grade FROM Highschooler GROUP BY grade HAVING COUNT(*) >= 4	network_1
-SELECT grade FROM Highschooler GROUP BY grade HAVING COUNT(*) >= 4	network_1
-SELECT Highschooler.ID, COUNT(Friend.friend_id) AS number_of_friends FROM Highschooler LEFT JOIN Friend ON Highschooler.ID = Friend.student_id GROUP BY Highschooler.ID	network_1
-SELECT T1.name, COUNT(T2.friend_id) AS friend_count FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id GROUP BY T1.ID	network_1
-SELECT T1.name, COUNT(T2.friend_id) AS number_of_friends FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id GROUP BY T1.ID	network_1
-SELECT Highschooler.name, COUNT(Friend.friend_id) AS friend_count FROM Highschooler LEFT JOIN Friend ON Highschooler.ID = Friend.student_id GROUP BY Highschooler.ID	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Friend ON Highschooler.ID = Friend.student_id GROUP BY Highschooler.ID ORDER BY COUNT(Friend.friend_id) DESC LIMIT 1	network_1
-SELECT H.name FROM Highschooler AS H JOIN Friend AS F ON H.ID = F.student_id GROUP BY H.ID ORDER BY COUNT(*) DESC LIMIT 1	network_1
-SELECT b.name FROM Friend AS a INNER JOIN Highschooler AS b ON a.student_id = b.id GROUP BY a.student_id HAVING count(*) >= 3	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Friend ON Highschooler.ID = Friend.student_id GROUP BY Highschooler.ID HAVING COUNT(Friend.friend_id) >= 3	network_1
-SELECT T2.name FROM Highschooler AS T1 JOIN Friend AS T3 ON T1.ID = T3.student_id JOIN Highschooler AS T2 ON T3.friend_id = T2.ID WHERE T1.name = 'Kyle'	network_1
-SELECT T2.name FROM Highschooler AS T1 JOIN Friend AS T3 ON T1.ID = T3.student_id JOIN Highschooler AS T2 ON T3.friend_id = T2.ID WHERE T1.name = 'Kyle'	network_1
-SELECT COUNT(*) AS friend_count FROM Highschooler JOIN Friend ON Highschooler.ID = Friend.student_id WHERE Highschooler.name = 'Kyle'	network_1
-SELECT COUNT(*) FROM Friend JOIN Highschooler ON Highschooler.ID = Friend.student_id WHERE Highschooler.name = 'Kyle'	network_1
-SELECT T1.ID FROM Highschooler AS T1 LEFT JOIN Friend AS T2 ON T1.ID = T2.student_id WHERE T2.student_id IS NULL	network_1
-SELECT T1.ID FROM Highschooler AS T1 LEFT JOIN Friend AS T2 ON T1.ID = T2.student_id WHERE T2.student_id IS NULL	network_1
-SELECT Highschooler.name FROM Highschooler LEFT JOIN Friend ON Highschooler.ID = Friend.student_id WHERE Friend.student_id IS NULL	network_1
-SELECT Highschooler.name FROM Highschooler LEFT JOIN Friend ON Highschooler.ID = Friend.student_id WHERE Friend.student_id IS NULL	network_1
-SELECT T1.ID FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id INTERSECT SELECT T1.ID FROM Highschooler AS T1 JOIN Likes AS T2 ON T1.ID = T2.liked_id	network_1
-SELECT student_id AS ID FROM Friend INTERSECT SELECT liked_id AS ID FROM Likes	network_1
-SELECT DISTINCT Highschooler.name FROM Highschooler JOIN Friend ON Highschooler.ID = Friend.student_id JOIN Likes ON Highschooler.ID = Likes.liked_id	network_1
-SELECT name FROM Highschooler WHERE ID IN (SELECT student_id FROM Friend) INTERSECT SELECT name FROM Highschooler WHERE ID IN (SELECT liked_id FROM Likes)	network_1
-SELECT student_id, COUNT(*) AS like_count FROM Likes GROUP BY student_id	network_1
-SELECT student_id, COUNT(*) AS count_of_likes FROM Likes GROUP BY student_id	network_1
-SELECT Highschooler.name, COUNT(*) AS number_of_likes FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID	network_1
-SELECT Highschooler.name, COUNT(*) AS likes_count FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID ORDER BY COUNT(*) DESC LIMIT 1	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID ORDER BY COUNT(*) DESC LIMIT 1	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID HAVING COUNT(*) >= 2	network_1
-SELECT Highschooler.name FROM Highschooler JOIN Likes ON Highschooler.ID = Likes.student_id GROUP BY Highschooler.ID HAVING COUNT(*) >= 2	network_1
-SELECT b.name FROM Friend AS a INNER JOIN Highschooler AS b ON a.student_id = b.id WHERE b.grade > 5 GROUP BY a.student_id HAVING count(*) >= 2	network_1
-SELECT b.name FROM Friend AS a INNER JOIN Highschooler AS b ON a.student_id = b.id WHERE b.grade > 5 GROUP BY a.student_id HAVING count(*) >= 2	network_1
-SELECT COUNT(*) AS number_of_likes FROM Likes JOIN Highschooler ON Highschooler.ID = Likes.student_id WHERE Highschooler.name = 'Kyle'	network_1
-SELECT COUNT(*) AS likes_count FROM Likes JOIN Highschooler ON Likes.student_id = Highschooler.ID WHERE Highschooler.name = 'Kyle'	network_1
-SELECT AVG(T1.grade) AS 'average grade' FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id	network_1
-SELECT AVG(T1.grade) AS average_grade FROM Highschooler AS T1 JOIN Friend AS T2 ON T1.ID = T2.student_id	network_1
-SELECT MIN(T1.grade) FROM Highschooler AS T1 LEFT JOIN Friend AS T2 ON T1.ID = T2.student_id WHERE T2.student_id IS NULL	network_1
-SELECT MIN(T1.grade) FROM Highschooler AS T1 LEFT JOIN Friend AS T2 ON T1.ID = T2.student_id WHERE T2.friend_id IS NULL	network_1
+select count(*) from Highschooler	network_1
+select count(*) from Highschooler	network_1
+select name, grade from Highschooler	network_1
+select name, grade from Highschooler	network_1
+select grade from Highschooler	network_1
+select grade from Highschooler	network_1
+select grade from Highschooler where name = "Kyle"	network_1
+select grade from Highschooler where name = "Kyle"	network_1
+select name from Highschooler where grade = 10	network_1
+select name from Highschooler where grade = 10	network_1
+select ID from Highschooler where name = "Kyle"	network_1
+select ID from Highschooler where name = "Kyle"	network_1
+SELECT count(*) FROM Highschooler WHERE grade  =  9 OR grade  =  10	network_1
+SELECT count(*) FROM Highschooler WHERE grade  =  9 OR grade  =  10	network_1
+SELECT grade ,  count(*) FROM Highschooler GROUP BY grade	network_1
+select grade, count(*) from Highschooler group by grade	network_1
+select grade from Highschooler group by grade order by count(*) desc limit 1	network_1
+select grade from Highschooler group by grade order by count(*) desc limit 1	network_1
+select grade from Highschooler group by grade having count(*) >= 4	network_1
+select grade from Highschooler group by grade having count(*) >= 4	network_1
+select Highschooler.ID, count(Friend.friend_id) from Highschooler left join Friend on Highschooler.ID = Friend.student_id group by Highschooler.ID	network_1
+select T1.name, count(T2.friend_id) from Highschooler as T1 join Friend as T2 on T1.ID = T2.student_id group by T1.ID	network_1
+select T1.name, count(T2.friend_id) from Highschooler as T1 join Friend as T2 on T1.ID = T2.student_id group by T1.ID	network_1
+select Highschooler.name, count(Friend.friend_id) from Highschooler left join Friend on Highschooler.ID = Friend.student_id group by Highschooler.ID	network_1
+select Highschooler.name from Highschooler join Friend on Highschooler.ID = Friend.student_id group by Highschooler.ID order by count(Friend.friend_id) desc limit 1	network_1
+select H.name from Highschooler as H join Friend as F on H.ID = F.student_id group by H.ID order by count(*) desc limit 1	network_1
+SELECT T2.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id GROUP BY T1.student_id HAVING count(*)  >=  3	network_1
+select Highschooler.name from Highschooler join Friend on Highschooler.ID = Friend.student_id group by Highschooler.ID having count(Friend.friend_id) >= 3	network_1
+select T2.name from Highschooler as T1 join Friend as T3 on T1.ID = T3.student_id join Highschooler as T2 on T3.friend_id = T2.ID where T1.name = "Kyle"	network_1
+select T2.name from Highschooler as T1 join Friend as T3 on T1.ID = T3.student_id join Highschooler as T2 on T3.friend_id = T2.ID where T1.name = "Kyle"	network_1
+select count(*) from Highschooler join Friend on Highschooler.ID = Friend.student_id where Highschooler.name = "Kyle"	network_1
+select count(*) from Friend join Highschooler on Highschooler.ID = Friend.student_id where Highschooler.name = "Kyle"	network_1
+select T1.ID from Highschooler as T1 left join Friend as T2 on T1.ID = T2.student_id where T2.student_id is null	network_1
+select T1.ID from Highschooler as T1 left join Friend as T2 on T1.ID = T2.student_id where T2.student_id is null	network_1
+select Highschooler.name from Highschooler left join Friend on Highschooler.ID = Friend.student_id where Friend.student_id is null	network_1
+select Highschooler.name from Highschooler left join Friend on Highschooler.ID = Friend.student_id where Friend.student_id is null	network_1
+select T1.ID from Highschooler as T1 join Friend as T2 on T1.ID = T2.student_id intersect select T1.ID from Highschooler as T1 join Likes as T2 on T1.ID = T2.liked_id	network_1
+select student_id from Friend intersect select liked_id from Likes	network_1
+select distinct Highschooler.name from Highschooler join Friend on Highschooler.ID = Friend.student_id join Likes on Highschooler.ID = Likes.liked_id	network_1
+select name from Highschooler where ID in (select student_id from Friend) intersect select name from Highschooler where ID in (select liked_id from Likes)	network_1
+select student_id, count(*) from Likes group by student_id	network_1
+select student_id, count(*) from Likes group by student_id	network_1
+select Highschooler.name, count(*) from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID	network_1
+select Highschooler.name, count(*) from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID	network_1
+select Highschooler.name from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID order by count(*) desc limit 1	network_1
+select Highschooler.name from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID order by count(*) desc limit 1	network_1
+select Highschooler.name from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID having count(*) >= 2	network_1
+select Highschooler.name from Highschooler join Likes on Highschooler.ID = Likes.student_id group by Highschooler.ID having count(*) >= 2	network_1
+SELECT T2.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id WHERE T2.grade  >  5 GROUP BY T1.student_id HAVING count(*)  >=  2	network_1
+SELECT T2.name FROM Friend AS T1 JOIN Highschooler AS T2 ON T1.student_id  =  T2.id WHERE T2.grade  >  5 GROUP BY T1.student_id HAVING count(*)  >=  2	network_1
+select count(*) from Likes join Highschooler on Highschooler.ID = Likes.student_id where Highschooler.name = "Kyle"	network_1
+select count(*) from Likes join Highschooler on Likes.student_id = Highschooler.ID where Highschooler.name = "Kyle"	network_1
+select avg(T1.grade) as "average grade" from Highschooler as T1 join Friend as T2 on T1.ID = T2.student_id	network_1
+select avg(T1.grade) from Highschooler as T1 join Friend as T2 on T1.ID = T2.student_id	network_1
+select min(T1.grade) from Highschooler as T1 left join Friend as T2 on T1.ID = T2.student_id where T2.student_id is null	network_1
+select min(T1.grade) from Highschooler as T1 left join Friend as T2 on T1.ID = T2.student_id where T2.friend_id is null	network_1

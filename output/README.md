@@ -21,17 +21,3 @@ Re-evaluate (after placing Spider SQLite DBs):
 ./scripts/eval_published_results.sh 4step
 ./scripts/eval_published_results.sh 6step
 ```
-
-## Dr.Spider-340 diagnostic subset
-
-| Path | Contents |
-| --- | --- |
-| `drspider340/sample_manifest.json` | 340 sampled post-perturbation items (seed protocol) |
-| `drspider340/smoke_summary_all.json` | 4-step vs 6-step EX summaries |
-| `drspider340/{4step,6step}/{gold,predict}.sql` | Predictions for the 340-item run |
-| `drspider340/{4step,6step}/ex_detail.json` | Per-sample EX flags |
-| `drspider340/{4step,6step}/raw_responses/` | Per-question agent traces (340 each) |
-| `../experiments/round2/drspider/` | Question/gold JSON + sampling script |
-
-Dr.Spider SQLite files are **not** vendored (license/size). Reconstruct paths from
-`database_relpath` in the JSON artifacts after downloading the official Dr.Spider release.

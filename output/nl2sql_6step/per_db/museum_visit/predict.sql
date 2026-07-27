@@ -1,18 +1,18 @@
-SELECT COUNT(*) AS count FROM visitor WHERE Age < 30	museum_visit
-SELECT Name FROM visitor WHERE Level_of_membership > 4 ORDER BY Level_of_membership DESC	museum_visit
-SELECT AVG(Age) AS average_age FROM visitor WHERE Level_of_membership <= 4	museum_visit
-SELECT Name, Level_of_membership FROM visitor WHERE Level_of_membership > 4 ORDER BY Age DESC	museum_visit
-SELECT Museum_ID, Name FROM museum ORDER BY Num_of_Staff DESC LIMIT 1	museum_visit
-SELECT AVG(Num_of_Staff) FROM museum WHERE Open_Year < '2009'	museum_visit
-SELECT Open_Year, Num_of_Staff FROM museum WHERE Name = 'Plaza Museum'	museum_visit
-SELECT Name FROM museum WHERE Num_of_Staff > (SELECT MIN(Num_of_Staff) FROM museum WHERE Open_Year > 2010)	museum_visit
-SELECT a.id , a.name , a.age FROM visitor AS a INNER JOIN visit AS b ON a.id = b.visitor_id GROUP BY a.id HAVING count(*) > 1	museum_visit
-SELECT T1.ID, T1.Name, T1.Level_of_membership FROM visitor AS T1 JOIN visit AS T2 ON T1.ID = T2.visitor_ID GROUP BY T1.ID ORDER BY SUM(T2.Total_spent) DESC LIMIT 1	museum_visit
-SELECT b.Museum_ID , a.name FROM museum AS a INNER JOIN visit AS b ON a.Museum_ID = b.Museum_ID GROUP BY b.Museum_ID ORDER BY count(*) DESC LIMIT 1	museum_visit
-SELECT museum.Name FROM museum LEFT JOIN visit ON museum.Museum_ID = visit.Museum_ID WHERE visit.Museum_ID IS NULL	museum_visit
-SELECT visitor.Name, visitor.Age FROM visitor JOIN visit ON visitor.ID = visit.visitor_ID ORDER BY visit.Num_of_Ticket DESC LIMIT 1	museum_visit
-SELECT AVG(Num_of_Ticket), MAX(Num_of_Ticket) FROM visit	museum_visit
-SELECT SUM(visit.Total_spent) FROM visit JOIN visitor ON visit.visitor_ID = visitor.ID WHERE visitor.Level_of_membership = 1	museum_visit
-SELECT visitor.Name FROM museum JOIN visit ON visit.Museum_ID = museum.Museum_ID JOIN visitor ON visit.visitor_ID = visitor.ID WHERE museum.Open_Year < 2009 INTERSECT SELECT visitor.Name FROM museum JOIN visit ON visit.Museum_ID = museum.Museum_ID JOIN visitor ON visit.visitor_ID = visitor.ID WHERE museum.Open_Year > 2011	museum_visit
-SELECT COUNT(*) FROM (SELECT DISTINCT T1.visitor_ID FROM visit AS T1 JOIN museum AS T2 ON T1.Museum_ID = T2.Museum_ID WHERE T2.Open_Year <= 2010 EXCEPT SELECT DISTINCT T1.visitor_ID FROM visit AS T1 JOIN museum AS T2 ON T1.Museum_ID = T2.Museum_ID WHERE T2.Open_Year > 2010) AS temp	museum_visit
-SELECT COUNT(*) AS count FROM museum WHERE Open_Year > 2013 OR Open_Year < 2008	museum_visit
+select count(*) from visitor where Age < 30	museum_visit
+select Name from visitor where Level_of_membership > 4 order by Level_of_membership desc	museum_visit
+select avg(Age) from visitor where Level_of_membership <= 4	museum_visit
+select Name, Level_of_membership from visitor where Level_of_membership > 4 order by Age desc	museum_visit
+select Museum_ID, Name from museum order by Num_of_Staff desc limit 1	museum_visit
+select avg(Num_of_Staff) from museum where Open_Year < 2009	museum_visit
+select Open_Year, Num_of_Staff from museum where Name = "Plaza Museum"	museum_visit
+select Name from museum where Num_of_Staff > (select min(Num_of_Staff) from museum where Open_Year > 2010)	museum_visit
+SELECT t1.id ,  t1.name ,  t1.age FROM visitor AS t1 JOIN visit AS t2 ON t1.id  =  t2.visitor_id GROUP BY t1.id HAVING count(*)  >  1	museum_visit
+select T1.ID, T1.Name, T1.Level_of_membership from visitor as T1 join visit as T2 on T1.ID = T2.visitor_ID group by T1.ID order by sum(T2.Total_spent) desc limit 1	museum_visit
+SELECT t2.Museum_ID ,  t1.name FROM museum AS t1 JOIN visit AS t2 ON t1.Museum_ID  =  t2.Museum_ID GROUP BY t2.Museum_ID ORDER BY count(*) DESC LIMIT 1	museum_visit
+select museum.Name from museum left join visit on museum.Museum_ID = visit.Museum_ID where visit.Museum_ID is null	museum_visit
+select visitor.Name, visitor.Age from visitor join visit on visitor.ID = visit.visitor_ID order by visit.Num_of_Ticket desc limit 1	museum_visit
+select avg(Num_of_Ticket), max(Num_of_Ticket) from visit	museum_visit
+select sum(visit.Total_spent) from visit join visitor on visit.visitor_ID = visitor.ID where visitor.Level_of_membership = 1	museum_visit
+select visitor.Name from museum join visit on visit.Museum_ID = museum.Museum_ID join visitor on visit.visitor_ID = visitor.ID where museum.Open_Year < 2009 intersect select visitor.Name from museum join visit on visit.Museum_ID = museum.Museum_ID join visitor on visit.visitor_ID = visitor.ID where museum.Open_Year > 2011	museum_visit
+select count(*) from (select distinct T1.visitor_ID from visit as T1 join museum as T2 on T1.Museum_ID = T2.Museum_ID where T2.Open_Year <= 2010 except select distinct T1.visitor_ID from visit as T1 join museum as T2 on T1.Museum_ID = T2.Museum_ID where T2.Open_Year > 2010)	museum_visit
+select count(*) from museum where Open_Year > 2013 or Open_Year < 2008	museum_visit

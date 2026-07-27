@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 0.871,
-      "raw_response": "{\"sql\": \"SELECT count(DISTINCT GovernmentForm) FROM country WHERE (Continent = \\\"Africa\\\")\"}",
+      "raw_response": "{\"sql\": \"SELECT count(DISTINCT GovernmentForm) FROM country WHERE Continent  =  \\\"Africa\\\"\"}",
       "token_usage": {
         "total_tokens": 1662,
         "prompt_tokens": 1628,
@@ -69,7 +69,7 @@
       }
     }
   ],
-  "final_sql": "SELECT count(DISTINCT GovernmentForm) FROM country WHERE (Continent = \"Africa\")",
+  "final_sql": "SELECT count(DISTINCT GovernmentForm) FROM country WHERE Continent  =  \"Africa\"",
   "explain": "Validator no-op: current SQL already constraint-valid.",
   "error": "",
   "timestamp": "2026-07-25T17:41:34.033792"

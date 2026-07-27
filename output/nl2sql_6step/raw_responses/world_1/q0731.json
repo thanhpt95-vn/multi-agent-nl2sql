@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 0.934,
-      "raw_response": "{\"sql\": \"SELECT avg(GNP) , sum(population) FROM country WHERE (GovernmentForm = \\\"US Territory\\\")\"}",
+      "raw_response": "{\"sql\": \"SELECT avg(GNP) ,  sum(population) FROM country WHERE GovernmentForm  =  \\\"US Territory\\\"\"}",
       "token_usage": {
         "total_tokens": 1752,
         "prompt_tokens": 1705,
@@ -69,7 +69,7 @@
       }
     }
   ],
-  "final_sql": "SELECT avg(GNP) , sum(population) FROM country WHERE (GovernmentForm = \"US Territory\")",
+  "final_sql": "SELECT avg(GNP) ,  sum(population) FROM country WHERE GovernmentForm  =  \"US Territory\"",
   "explain": "Validator no-op: current SQL already constraint-valid.",
   "error": "",
   "timestamp": "2026-07-25T17:40:50.782412"

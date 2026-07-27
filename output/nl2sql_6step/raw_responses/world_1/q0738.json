@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 0.854,
-      "raw_response": "{\"sql\": \"SELECT COUNT(*) FROM country AS a INNER JOIN countrylanguage AS b ON a.Code = b.CountryCode WHERE a.Name = \\\"Afghanistan\\\" AND IsOfficial = \\\"T\\\"\"}",
+      "raw_response": "{\"sql\": \"SELECT COUNT(*) FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T1.Name  =  \\\"Afghanistan\\\" AND IsOfficial  =  \\\"T\\\"\"}",
       "token_usage": {
         "total_tokens": 1948,
         "prompt_tokens": 1898,
@@ -69,7 +69,7 @@
       }
     }
   ],
-  "final_sql": "SELECT COUNT(*) FROM country AS a INNER JOIN countrylanguage AS b ON a.Code = b.CountryCode WHERE a.Name = \"Afghanistan\" AND IsOfficial = \"T\"",
+  "final_sql": "SELECT COUNT(*) FROM country AS T1 JOIN countrylanguage AS T2 ON T1.Code  =  T2.CountryCode WHERE T1.Name  =  \"Afghanistan\" AND IsOfficial  =  \"T\"",
   "explain": "Validator no-op: current SQL already constraint-valid.",
   "error": "",
   "timestamp": "2026-07-25T17:42:28.291394"

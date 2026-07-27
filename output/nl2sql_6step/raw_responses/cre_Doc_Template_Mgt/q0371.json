@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 1.12,
-      "raw_response": "{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) >= 2\"}",
+      "raw_response": "{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*)  >=  2\"}",
       "token_usage": {
         "total_tokens": 2147,
         "prompt_tokens": 2104,
@@ -65,7 +65,7 @@
       "step_name": "refine_sql",
       "attempt": 1,
       "elapsed_seconds": 2.04,
-      "raw_response": "{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) >= 2\", \"notes\": \"The initial SQL correctly selects Document_ID from Paragraphs, grouping by Document_ID to count Paragraph_IDs, meeting the criteria of documents having at least two paragraphs. Since all required operations are performed through the Paragraphs table and there is no need to join with the Documents table based on the current requirements, no changes were necessary.\", \"diagnostics\": [\"Confirmed the use of COUNT(*) without DISTINCT as there's no join-induced duplication.\", \"Confirmed no join required since operation is on 'Paragraphs' table alone.\"]}",
+      "raw_response": "{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*)  >=  2\", \"notes\": \"The initial SQL correctly selects Document_ID from Paragraphs, grouping by Document_ID to count Paragraph_IDs, meeting the criteria of documents having at least two paragraphs. Since all required operations are performed through the Paragraphs table and there is no need to join with the Documents table based on the current requirements, no changes were necessary.\", \"diagnostics\": [\"Confirmed the use of COUNT(*) without DISTINCT as there's no join-induced duplication.\", \"Confirmed no join required since operation is on 'Paragraphs' table alone.\"]}",
       "token_usage": {
         "total_tokens": 1815,
         "prompt_tokens": 1665,
@@ -79,7 +79,7 @@
       "step_name": "validate_sql",
       "attempt": 1,
       "elapsed_seconds": 6.815,
-      "raw_response": "I now can give a great answer\n{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) >= 2\", \"explain\": \"The SQL correctly selects Document_ID, groups by it, and filters groups to include only those with at least two paragraphs, directly answering the question. No changes needed as all validation checks passed.\", \"error\": \"\"}",
+      "raw_response": "I now can give a great answer\n{\"sql\": \"SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*)  >=  2\", \"explain\": \"The SQL correctly selects Document_ID, groups by it, and filters groups to include only those with at least two paragraphs, directly answering the question. No changes needed as all validation checks passed.\", \"error\": \"\"}",
       "token_usage": {
         "total_tokens": 2733,
         "prompt_tokens": 1338,
@@ -90,7 +90,7 @@
       "timestamp": "2026-07-25T05:33:00.068872"
     }
   ],
-  "final_sql": "SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*) >= 2",
+  "final_sql": "SELECT document_id FROM Paragraphs GROUP BY document_id HAVING count(*)  >=  2",
   "explain": "The SQL correctly selects Document_ID, groups by it, and filters groups to include only those with at least two paragraphs, directly answering the question. No changes needed as all validation checks passed.",
   "error": "",
   "timestamp": "2026-07-25T05:33:00.072309"

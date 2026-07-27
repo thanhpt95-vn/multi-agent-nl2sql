@@ -1,40 +1,40 @@
-SELECT COUNT(*) AS count FROM poker_player	poker_player
-SELECT COUNT(*) AS number_of_poker_players FROM poker_player	poker_player
-SELECT Earnings FROM poker_player ORDER BY Earnings DESC	poker_player
-SELECT Earnings FROM poker_player ORDER BY Earnings DESC	poker_player
-SELECT Final_Table_Made, Best_Finish FROM poker_player	poker_player
-SELECT Final_Table_Made, Best_Finish FROM poker_player	poker_player
-SELECT AVG(Earnings) AS average_earnings FROM poker_player;	poker_player
-SELECT AVG(Earnings) AS average_earnings FROM poker_player	poker_player
-SELECT Money_Rank FROM poker_player ORDER BY Earnings DESC LIMIT 1;	poker_player
-SELECT Money_Rank FROM poker_player ORDER BY Earnings DESC LIMIT 1	poker_player
-SELECT MAX(Final_Table_Made) FROM poker_player WHERE (Earnings < 200000)	poker_player
-SELECT MAX(Final_Table_Made) FROM poker_player WHERE Earnings < 200000	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID	poker_player
-SELECT a.Name FROM people AS a INNER JOIN poker_player AS b ON a.People_ID = b.People_ID	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID WHERE poker_player.Earnings > 300000	poker_player
-SELECT a.Name FROM people AS a INNER JOIN poker_player AS b ON a.People_ID = b.People_ID WHERE b.Earnings > 300000	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Final_Table_Made ASC	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Final_Table_Made ASC	poker_player
-SELECT people.Birth_Date FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Earnings ASC LIMIT 1;	poker_player
-SELECT people.Birth_Date FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Earnings ASC LIMIT 1	poker_player
-SELECT T1.Money_Rank FROM poker_player AS T1 JOIN people AS T2 ON T1.People_ID = T2.People_ID ORDER BY T2.Height DESC LIMIT 1	poker_player
-SELECT T1.Money_Rank FROM poker_player AS T1 JOIN people AS T2 ON T1.People_ID = T2.People_ID ORDER BY T2.Height DESC LIMIT 1	poker_player
-SELECT AVG(poker_player.Earnings) AS average_earnings FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID WHERE people.Height > 200	poker_player
-SELECT AVG(poker_player.Earnings) AS average_earnings FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID WHERE people.Height > 200	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Earnings DESC	poker_player
-SELECT people.Name FROM poker_player JOIN people ON poker_player.People_ID = people.People_ID ORDER BY poker_player.Earnings DESC;	poker_player
-SELECT Nationality, COUNT(*) AS number_of_people FROM people GROUP BY Nationality	poker_player
-SELECT Nationality , COUNT(1) FROM people GROUP BY Nationality	poker_player
-SELECT Nationality FROM people GROUP BY Nationality ORDER BY COUNT(*) DESC LIMIT 1	poker_player
-SELECT Nationality FROM people GROUP BY Nationality ORDER BY COUNT(*) DESC LIMIT 1	poker_player
-SELECT Nationality FROM people GROUP BY Nationality HAVING COUNT(*) >= 2	poker_player
-SELECT Nationality FROM people GROUP BY Nationality HAVING COUNT(*) >= 2	poker_player
-SELECT Name, Birth_Date FROM people ORDER BY Name ASC	poker_player
-SELECT Name, Birth_Date FROM people ORDER BY Name ASC	poker_player
+select count(*) from poker_player	poker_player
+select count(*) from poker_player	poker_player
+select Earnings from poker_player order by Earnings desc	poker_player
+select Earnings from poker_player order by Earnings desc	poker_player
+select Final_Table_Made, Best_Finish from poker_player	poker_player
+select Final_Table_Made, Best_Finish from poker_player	poker_player
+select avg(Earnings) from poker_player	poker_player
+select avg(Earnings) from poker_player	poker_player
+select Money_Rank from poker_player order by Earnings desc limit 1	poker_player
+select Money_Rank from poker_player order by Earnings desc limit 1	poker_player
+select max(Final_Table_Made) from poker_player where Earnings < 200000	poker_player
+select max(Final_Table_Made) from poker_player where Earnings < 200000	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID	poker_player
+select T1.Name from people as T1 join poker_player as T2 on T1.People_ID = T2.People_ID	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID where poker_player.Earnings > 300000	poker_player
+select T1.Name from people as T1 join poker_player as T2 on T1.People_ID = T2.People_ID where T2.Earnings > 300000	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Final_Table_Made asc	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Final_Table_Made asc	poker_player
+select people.Birth_Date from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Earnings asc limit 1	poker_player
+select people.Birth_Date from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Earnings asc limit 1	poker_player
+select T1.Money_Rank from poker_player as T1 join people as T2 on T1.People_ID = T2.People_ID order by T2.Height desc limit 1	poker_player
+select T1.Money_Rank from poker_player as T1 join people as T2 on T1.People_ID = T2.People_ID order by T2.Height desc limit 1	poker_player
+select avg(poker_player.Earnings) from poker_player join people on poker_player.People_ID = people.People_ID where people.Height > 200	poker_player
+select avg(poker_player.Earnings) from poker_player join people on poker_player.People_ID = people.People_ID where people.Height > 200	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Earnings desc	poker_player
+select people.Name from poker_player join people on poker_player.People_ID = people.People_ID order by poker_player.Earnings desc	poker_player
+select Nationality, count(*) from people group by Nationality	poker_player
+SELECT Nationality ,  COUNT(*) FROM people GROUP BY Nationality	poker_player
+select Nationality from people group by Nationality order by count(*) desc limit 1	poker_player
+select Nationality from people group by Nationality order by count(*) desc limit 1	poker_player
+select Nationality from people group by Nationality having count(*) >= 2	poker_player
+select Nationality from people group by Nationality having count(*) >= 2	poker_player
+select Name, Birth_Date from people order by Name asc	poker_player
+select Name, Birth_Date from people order by Name asc	poker_player
 SELECT Name FROM people WHERE Nationality != "Russia"	poker_player
 SELECT Name FROM people WHERE Nationality != "Russia"	poker_player
-SELECT people.Name FROM people LEFT JOIN poker_player ON people.People_ID = poker_player.People_ID WHERE poker_player.People_ID IS NULL	poker_player
-SELECT people.Name FROM people LEFT JOIN poker_player ON people.People_ID = poker_player.People_ID WHERE poker_player.People_ID IS NULL	poker_player
-SELECT COUNT(DISTINCT Nationality) AS count FROM people	poker_player
-SELECT COUNT(DISTINCT Nationality) FROM people	poker_player
+select people.Name from people left join poker_player on people.People_ID = poker_player.People_ID where poker_player.People_ID is null	poker_player
+select people.Name from people left join poker_player on people.People_ID = poker_player.People_ID where poker_player.People_ID is null	poker_player
+select count(distinct Nationality) from people	poker_player
+select count(distinct Nationality) from people	poker_player

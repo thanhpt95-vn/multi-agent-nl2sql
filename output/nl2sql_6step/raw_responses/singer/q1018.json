@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 1.148,
-      "raw_response": "{\"sql\": \"SELECT b.Title , a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID\"}",
+      "raw_response": "{\"sql\": \"SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID\"}",
       "token_usage": {
         "total_tokens": 2037,
         "prompt_tokens": 2000,
@@ -65,7 +65,7 @@
       "step_name": "refine_sql",
       "attempt": 1,
       "elapsed_seconds": 2.955,
-      "raw_response": "{\"sql\": \"SELECT b.Title , a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID\", \"notes\": \"The initial SQL aligns with expected output fields. It correctly joins 'song' and 'singer' tables using the foreign key relationship on 'Singer_ID', selects the required fields 'Title' from 'song', and 'Name' from 'singer', and maintains the correct field order as per the plan.\", \"diagnostics\": [\"SELECT order matches expected output fields.\", \"Join is necessary and correct; uses proper PK-FK relationship.\", \"No unnecessary ORDER BY or GROUP BY present.\"]}",
+      "raw_response": "{\"sql\": \"SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID\", \"notes\": \"The initial SQL aligns with expected output fields. It correctly joins 'song' and 'singer' tables using the foreign key relationship on 'Singer_ID', selects the required fields 'Title' from 'song', and 'Name' from 'singer', and maintains the correct field order as per the plan.\", \"diagnostics\": [\"SELECT order matches expected output fields.\", \"Join is necessary and correct; uses proper PK-FK relationship.\", \"No unnecessary ORDER BY or GROUP BY present.\"]}",
       "token_usage": {
         "total_tokens": 1726,
         "prompt_tokens": 1585,
@@ -79,7 +79,7 @@
       "step_name": "validate_sql",
       "attempt": 1,
       "elapsed_seconds": 4.553,
-      "raw_response": "{\"sql\": \"SELECT b.Title , a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID\", \"explain\": \"The SQL query correctly selects 'Title' from the 'song' table and 'Name' from the 'singer' table. It uses an INNER JOIN on 'Singer_ID' to connect songs to their respective singers, which is consistent with the schema's foreign key relationship and the analysis requiring data from both tables. The output fields and their order match the expected_output_fields. No unnecessary joins, ORDER BY, GROUP BY, or other operations are present.\", \"error\": \"\"}",
+      "raw_response": "{\"sql\": \"SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID\", \"explain\": \"The SQL query correctly selects 'Title' from the 'song' table and 'Name' from the 'singer' table. It uses an INNER JOIN on 'Singer_ID' to connect songs to their respective singers, which is consistent with the schema's foreign key relationship and the analysis requiring data from both tables. The output fields and their order match the expected_output_fields. No unnecessary joins, ORDER BY, GROUP BY, or other operations are present.\", \"error\": \"\"}",
       "token_usage": {
         "total_tokens": 2167,
         "prompt_tokens": 1335,
@@ -90,7 +90,7 @@
       "timestamp": "2026-07-24T13:21:52.931054"
     }
   ],
-  "final_sql": "SELECT b.Title , a.Name FROM singer AS a INNER JOIN song AS b ON a.Singer_ID = b.Singer_ID",
+  "final_sql": "SELECT T2.Title ,  T1.Name FROM singer AS T1 JOIN song AS T2 ON T1.Singer_ID  =  T2.Singer_ID",
   "explain": "The SQL query correctly selects 'Title' from the 'song' table and 'Name' from the 'singer' table. It uses an INNER JOIN on 'Singer_ID' to connect songs to their respective singers, which is consistent with the schema's foreign key relationship and the analysis requiring data from both tables. The output fields and their order match the expected_output_fields. No unnecessary joins, ORDER BY, GROUP BY, or other operations are present.",
   "error": "",
   "timestamp": "2026-07-24T13:21:52.934720"

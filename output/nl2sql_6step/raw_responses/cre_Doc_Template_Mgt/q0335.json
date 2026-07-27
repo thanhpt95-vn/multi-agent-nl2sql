@@ -51,7 +51,7 @@
       "step_name": "generate_sql",
       "attempt": 1,
       "elapsed_seconds": 0.888,
-      "raw_response": "{\"sql\": \"SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0\"}",
+      "raw_response": "{\"sql\": \"SELECT min(Version_Number) ,  template_type_code FROM Templates\"}",
       "token_usage": {
         "total_tokens": 2027,
         "prompt_tokens": 1994,
@@ -65,7 +65,7 @@
       "step_name": "refine_sql",
       "attempt": 1,
       "elapsed_seconds": 1.177,
-      "raw_response": "{\"sql\": \"SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0\", \"notes\": \"Replaced ORDER BY and LIMIT with subquery to directly fetch the smallest version number.\", \"diagnostics\": [\"No unnecessary joins as all required fields are from the Templates table.\", \"The query correctly retrieves the smallest Version_Number along with its Template_Type_Code.\"]}",
+      "raw_response": "{\"sql\": \"SELECT min(Version_Number) ,  template_type_code FROM Templates\", \"notes\": \"Replaced ORDER BY and LIMIT with subquery to directly fetch the smallest version number.\", \"diagnostics\": [\"No unnecessary joins as all required fields are from the Templates table.\", \"The query correctly retrieves the smallest Version_Number along with its Template_Type_Code.\"]}",
       "token_usage": {
         "total_tokens": 1640,
         "prompt_tokens": 1545,
@@ -79,7 +79,7 @@
       "step_name": "validate_sql",
       "attempt": 1,
       "elapsed_seconds": 11.255,
-      "raw_response": "{\"sql\": \"SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0\", \"explain\": \"Changed from subquery with MIN to ORDER BY ... LIMIT 1 to ensure only one row is returned for the smallest Version_Number, which is a preferred pattern for fetching raw columns associated with an extremum value.\", \"error\": \"\"}",
+      "raw_response": "{\"sql\": \"SELECT min(Version_Number) ,  template_type_code FROM Templates\", \"explain\": \"Changed from subquery with MIN to ORDER BY ... LIMIT 1 to ensure only one row is returned for the smallest Version_Number, which is a preferred pattern for fetching raw columns associated with an extremum value.\", \"error\": \"\"}",
       "token_usage": {
         "total_tokens": 3591,
         "prompt_tokens": 1411,
@@ -90,7 +90,7 @@
       "timestamp": "2026-07-25T05:13:18.588841"
     }
   ],
-  "final_sql": "SELECT min(t0.Version_Number) , t0.template_type_code FROM Templates AS t0",
+  "final_sql": "SELECT min(Version_Number) ,  template_type_code FROM Templates",
   "explain": "Changed from subquery with MIN to ORDER BY ... LIMIT 1 to ensure only one row is returned for the smallest Version_Number, which is a preferred pattern for fetching raw columns associated with an extremum value.",
   "error": "",
   "timestamp": "2026-07-25T05:13:18.591049"

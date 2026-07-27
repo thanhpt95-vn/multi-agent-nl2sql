@@ -1,40 +1,40 @@
-SELECT COUNT(*) FROM conductor;	orchestra
-SELECT COUNT(*) FROM conductor	orchestra
-SELECT Name FROM conductor ORDER BY Age ASC	orchestra
-SELECT Name FROM conductor ORDER BY Age ASC	orchestra
+select count(*) from conductor	orchestra
+select count(*) from conductor	orchestra
+select Name from conductor order by Age asc	orchestra
+select Name from conductor order by Age asc	orchestra
 SELECT Name FROM conductor WHERE Nationality != 'USA'	orchestra
 SELECT Name FROM conductor WHERE Nationality != 'USA'	orchestra
-SELECT Record_Company FROM orchestra ORDER BY Year_of_Founded DESC	orchestra
-SELECT Record_Company FROM orchestra ORDER BY Year_of_Founded DESC;	orchestra
-SELECT AVG(Attendance) AS average_attendance FROM show	orchestra
-SELECT AVG(Attendance) AS average_attendance FROM show	orchestra
-SELECT max(SHARE) , min(SHARE) FROM performance WHERE TYPE <> "Live final"	orchestra
-SELECT max(SHARE) , min(SHARE) FROM performance WHERE TYPE <> "Live final"	orchestra
-SELECT COUNT(DISTINCT Nationality) AS count FROM conductor	orchestra
-SELECT COUNT(DISTINCT Nationality) AS number_of_different_nationalities FROM conductor	orchestra
-SELECT Name FROM conductor ORDER BY Year_of_Work DESC	orchestra
-SELECT Name FROM conductor ORDER BY Year_of_Work DESC	orchestra
-SELECT Name FROM conductor ORDER BY Year_of_Work DESC LIMIT 1;	orchestra
-SELECT Name FROM conductor ORDER BY Year_of_Work DESC LIMIT 1	orchestra
-SELECT T1.Name, T2.Orchestra FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID = T2.Conductor_ID	orchestra
-SELECT T1.Name, T2.Orchestra FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID = T2.Conductor_ID	orchestra
-SELECT a.Name FROM conductor AS a INNER JOIN orchestra AS b ON a.Conductor_ID = b.Conductor_ID GROUP BY b.Conductor_ID HAVING COUNT(*) > 1	orchestra
-SELECT T1.Name FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID = T2.Conductor_ID GROUP BY T1.Conductor_ID HAVING COUNT(*) > 1	orchestra
-SELECT c.Name FROM conductor AS c JOIN orchestra AS o ON c.Conductor_ID = o.Conductor_ID GROUP BY c.Name ORDER BY COUNT(*) DESC LIMIT 1	orchestra
-SELECT conductor.Name FROM conductor JOIN orchestra ON conductor.Conductor_ID = orchestra.Conductor_ID GROUP BY conductor.Conductor_ID ORDER BY COUNT(*) DESC LIMIT 1	orchestra
-SELECT T1.Name FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID = T2.Conductor_ID WHERE T2.Year_of_Founded > 2008	orchestra
-SELECT conductor.Name FROM conductor JOIN orchestra ON conductor.Conductor_ID = orchestra.Conductor_ID WHERE orchestra.Year_of_Founded > 2008	orchestra
-SELECT Record_Company, COUNT(*) AS number_of_orchestras FROM orchestra GROUP BY Record_Company	orchestra
-SELECT Record_Company , COUNT(1) FROM orchestra GROUP BY Record_Company	orchestra
-SELECT Major_Record_Format FROM orchestra GROUP BY Major_Record_Format ORDER BY COUNT(*) ASC	orchestra
-SELECT Major_Record_Format, COUNT(*) AS frequency FROM orchestra GROUP BY Major_Record_Format ORDER BY frequency DESC;	orchestra
-SELECT Record_Company FROM orchestra GROUP BY Record_Company ORDER BY COUNT(*) DESC LIMIT 1	orchestra
-SELECT Record_Company FROM orchestra GROUP BY Record_Company ORDER BY COUNT(*) DESC LIMIT 1	orchestra
-SELECT orchestra.Orchestra FROM orchestra LEFT JOIN performance ON orchestra.Orchestra_ID = performance.Orchestra_ID WHERE performance.Orchestra_ID IS NULL	orchestra
-SELECT o.Orchestra FROM orchestra AS o LEFT JOIN performance AS p ON o.Orchestra_ID = p.Orchestra_ID WHERE p.Performance_ID IS NULL	orchestra
-SELECT Record_Company FROM orchestra WHERE Year_of_Founded < 2003 INTERSECT SELECT Record_Company FROM orchestra WHERE Year_of_Founded > 2003;	orchestra
-SELECT Record_Company FROM orchestra WHERE Year_of_Founded < 2003 INTERSECT SELECT Record_Company FROM orchestra WHERE Year_of_Founded > 2003	orchestra
-SELECT COUNT(*) FROM orchestra WHERE (Major_Record_Format = "CD" OR Major_Record_Format = "DVD")	orchestra
-SELECT COUNT(*) FROM orchestra WHERE (Major_Record_Format = "CD" OR Major_Record_Format = "DVD")	orchestra
-SELECT DISTINCT T1.Year_of_Founded FROM orchestra AS T1 JOIN (SELECT Orchestra_ID FROM performance GROUP BY Orchestra_ID HAVING COUNT(Performance_ID) > 1) AS T2 ON T1.Orchestra_ID = T2.Orchestra_ID	orchestra
-SELECT DISTINCT T1.Year_of_Founded FROM orchestra AS T1 JOIN (SELECT Orchestra_ID FROM performance GROUP BY Orchestra_ID HAVING COUNT(*) > 1) AS T2 ON T1.Orchestra_ID = T2.Orchestra_ID	orchestra
+select Record_Company from orchestra order by Year_of_Founded desc	orchestra
+select Record_Company from orchestra order by Year_of_Founded desc	orchestra
+select avg(Attendance) from show	orchestra
+select avg(Attendance) from show	orchestra
+SELECT max(SHARE) ,  min(SHARE) FROM performance WHERE TYPE != "Live final"	orchestra
+SELECT max(SHARE) ,  min(SHARE) FROM performance WHERE TYPE != "Live final"	orchestra
+select count(distinct Nationality) from conductor	orchestra
+select count(distinct Nationality) from conductor	orchestra
+select Name from conductor order by Year_of_Work desc	orchestra
+select Name from conductor order by Year_of_Work desc	orchestra
+select Name from conductor order by Year_of_Work desc limit 1	orchestra
+select Name from conductor order by Year_of_Work desc limit 1	orchestra
+select T1.Name, T2.Orchestra from conductor as T1 join orchestra as T2 on T1.Conductor_ID = T2.Conductor_ID	orchestra
+select T1.Name, T2.Orchestra from conductor as T1 join orchestra as T2 on T1.Conductor_ID = T2.Conductor_ID	orchestra
+SELECT T1.Name FROM conductor AS T1 JOIN orchestra AS T2 ON T1.Conductor_ID  =  T2.Conductor_ID GROUP BY T2.Conductor_ID HAVING COUNT(*)  >  1	orchestra
+select T1.Name from conductor as T1 join orchestra as T2 on T1.Conductor_ID = T2.Conductor_ID group by T1.Conductor_ID having count(*) > 1	orchestra
+select c.Name from conductor as c join orchestra as o on c.Conductor_ID = o.Conductor_ID group by c.Name order by count(*) desc limit 1	orchestra
+select conductor.Name from conductor join orchestra on conductor.Conductor_ID = orchestra.Conductor_ID group by conductor.Conductor_ID order by count(*) desc limit 1	orchestra
+select T1.Name from conductor as T1 join orchestra as T2 on T1.Conductor_ID = T2.Conductor_ID where T2.Year_of_Founded > 2008	orchestra
+select conductor.Name from conductor join orchestra on conductor.Conductor_ID = orchestra.Conductor_ID where orchestra.Year_of_Founded > 2008	orchestra
+select Record_Company, count(*) from orchestra group by Record_Company	orchestra
+SELECT Record_Company ,  COUNT(*) FROM orchestra GROUP BY Record_Company	orchestra
+select Major_Record_Format from orchestra group by Major_Record_Format order by count(*) asc	orchestra
+select Major_Record_Format, count(*) from orchestra group by Major_Record_Format order by frequency desc	orchestra
+select Record_Company from orchestra group by Record_Company order by count(*) desc limit 1	orchestra
+select Record_Company from orchestra group by Record_Company order by count(*) desc limit 1	orchestra
+select orchestra.Orchestra from orchestra left join performance on orchestra.Orchestra_ID = performance.Orchestra_ID where performance.Orchestra_ID is null	orchestra
+select o.Orchestra from orchestra as o left join performance as p on o.Orchestra_ID = p.Orchestra_ID where p.Performance_ID is null	orchestra
+select Record_Company from orchestra where Year_of_Founded < 2003 intersect select Record_Company from orchestra where Year_of_Founded > 2003	orchestra
+select Record_Company from orchestra where Year_of_Founded < 2003 intersect select Record_Company from orchestra where Year_of_Founded > 2003	orchestra
+SELECT COUNT(*) FROM orchestra WHERE Major_Record_Format  =  "CD" OR Major_Record_Format  =  "DVD"	orchestra
+SELECT COUNT(*) FROM orchestra WHERE Major_Record_Format  =  "CD" OR Major_Record_Format  =  "DVD"	orchestra
+select distinct T1.Year_of_Founded from orchestra as T1 join (select Orchestra_ID from performance group by Orchestra_ID having count(Performance_ID) > 1) on T1.Orchestra_ID = T2.Orchestra_ID	orchestra
+select distinct T1.Year_of_Founded from orchestra as T1 join (select Orchestra_ID from performance group by Orchestra_ID having count(*) > 1) on T1.Orchestra_ID = T2.Orchestra_ID	orchestra
