@@ -5,7 +5,7 @@ Multi-agent Natural Language to SQL (NL2SQL) with [CrewAI](https://www.crewai.co
 - **4-step baseline:** Analysis → Schema → Generation → Validation  
 - **6-step proposed:** adds Query Planning + SQL Refinement
 
-This public package is for **advisor / reproducibility review**: runnable code, Spider questions/schema, published predictions, per-question agent traces, and the Dr.Spider-340 diagnostic subset (IDs + predictions). Large Spider SQLite dumps are not vendored in git; download them separately (link below).
+This public package is for **advisor / reproducibility review**: runnable code, Spider questions/schema, published predictions, and per-question agent traces. Large Spider SQLite dumps are not vendored in git; download them separately (link below).
 
 ## Results snapshot
 
@@ -80,8 +80,6 @@ export SPIDER_DATABASE_DIR=/path/to/spider_data/database
 ```
 
 Expected layout after setup: `experiments/test-suite-sql-eval/database/<db_id>/<db_id>.sqlite`.
-
-Dr.Spider full release (for re-running the 340 subset) must be downloaded separately from the official diagnostic-robustness-text-to-sql repository; paths are recorded in `experiments/round2/drspider/*.json`.
 
 ## Run / evaluate
 

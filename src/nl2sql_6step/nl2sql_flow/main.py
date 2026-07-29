@@ -497,7 +497,7 @@ def extended_route_reasons(
         reasons.append("multi-table aggregation/filter")
     if schema.join_plan_warnings:
         reasons.append("ambiguous join graph")
-    # Lexical cues common on Dr.Spider synonym/value/sort perturbations.
+    # Lexical cues for ranking / year / aggregate / synonym-style wording.
     question_lower = " ".join((question or "").lower().split())
     if question_lower:
         if re.search(
