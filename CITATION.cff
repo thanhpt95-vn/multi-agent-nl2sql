@@ -1,0 +1,24 @@
+cff-version: "1.2.0"
+message: "If you use this software, please cite it using the metadata below."
+title: "Multi-Agent NL2SQL with CrewAI"
+abstract: >
+  A reproducible multi-agent natural-language-to-SQL implementation using
+  CrewAI, evaluated on the Spider 1.0 development set with a 4-stage baseline,
+  two 5-stage ablations, and a 6-stage proposed pipeline.
+authors:
+  - family-names: "Pham"
+    given-names: "Tien Thanh"
+    orcid: "https://orcid.org/0009-0001-3719-8693"
+    affiliation: "Hanoi University of Science and Technology"
+version: "1.0.0"
+date-released: "2026-07-30"
+repository-code: "https://github.com/thanhpt95-vn/multi-agent-nl2sql"
+url: "https://github.com/thanhpt95-vn/multi-agent-nl2sql"
+license: MIT
+keywords:
+  - NL2SQL
+  - text-to-SQL
+  - multi-agent systems
+  - CrewAI
+  - large language models
+  - Spider
