@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pipeline hoàn chỉnh để chạy NL2SQL experiment với CrewAI và đánh giá bằng test-suite-sql-eval
+Complete pipeline for running NL2SQL experiments with CrewAI and evaluating
+them with test-suite-sql-eval.
 """
 
 import os
 import sys
+import hashlib
+import inspect
 
-# Tắt CrewAI telemetry để tránh timeout (gửi dữ liệu đến telemetry.crewai.com)
+# Disable CrewAI telemetry to avoid timeouts while sending telemetry data.
 os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 
 import json
@@ -21,47 +24,488 @@ import time
 import re
 import argparse
 from dotenv import load_dotenv
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 
-# Đường dẫn cơ sở cho các thành phần dự án (cố định)
-DATA_DIR = Path("data")                   # data chung cho tất cả pipeline
-SPIDER_DATA_DIR = DATA_DIR / "spider_data"       # chứa database Spider
-OUTPUT_BASE_DIR = Path("output")          # thư mục output chung
+# Fixed base paths for project components.
+DATA_DIR = Path("data")                   # Shared data for all pipelines.
+SPIDER_DATA_DIR = DATA_DIR / "spider_data"       # Contains the Spider databases.
+OUTPUT_BASE_DIR = Path("output")          # Shared output directory.
 DEV_QUESTIONS_FILE = OUTPUT_BASE_DIR / "questions_dev.json"
 
-# Các biến toàn cục phụ thuộc loại pipeline (4-step hoặc 6-step)
-NL2SQL_BASE_DIR: Path | None = None       # sẽ được set trong configure_pipeline()
-PIPELINE_OUTPUT_DIR: Path | None = None   # output riêng cho từng pipeline
-PIPELINE_TYPE: str = "4step"              # "4step" hoặc "6step"
+# Global variables determined by the pipeline type (4-step / 5-step / 6-step).
+NL2SQL_BASE_DIR: Path | None = None       # Set by configure_pipeline().
+PIPELINE_OUTPUT_DIR: Path | None = None   # Pipeline-specific output directory.
+PIPELINE_TYPE: str = "4step"              # "4step" | "6step" | "5step_without_planner" | "5step_without_refiner"
+_CONFIGURED_PIPELINE_PATH: str | None = None
+
+# CLI aliases → canonical PIPELINE_TYPE
+PIPELINE_TYPE_ALIASES = {
+    "4step": "4step",
+    "6step": "6step",
+    "5step_without_planner": "5step_without_planner",
+    "5step_without_refiner": "5step_without_refiner",
+    "without_planner": "5step_without_planner",
+    "without_refiner": "5step_without_refiner",
+    "5step_no_planner": "5step_without_planner",
+    "5step_no_refiner": "5step_without_refiner",
+    "no_planner": "5step_without_planner",
+    "no_refiner": "5step_without_refiner",
+}
+
+
+def normalize_pipeline_type(pipeline_type: str) -> str:
+    key = pipeline_type.strip().lower().replace("-", "_")
+    if key not in PIPELINE_TYPE_ALIASES:
+        raise ValueError(
+            "pipeline_type must be one of: 4step, 6step, "
+            "5step_without_planner (without_planner), "
+            "5step_without_refiner (without_refiner); "
+            f"got {pipeline_type!r}"
+        )
+    return PIPELINE_TYPE_ALIASES[key]
+
+
+def uses_six_step_codebase() -> bool:
+    """5-step variants reuse src/nl2sql_6step with one stage skipped."""
+    return PIPELINE_TYPE == "6step" or PIPELINE_TYPE.startswith("5step_")
+
+
+def code_package_key() -> str:
+    """Directory name under src/: nl2sql_4step or nl2sql_6step."""
+    return "4step" if PIPELINE_TYPE == "4step" else "6step"
+
+
+def _clear_ablation_skip_flags() -> None:
+    os.environ.pop("NL2SQL_SKIP_PLANNER", None)
+    os.environ.pop("NL2SQL_SKIP_REFINER", None)
+
+
+def _apply_5step_route(pipeline_type: str) -> None:
+    """Full-LLM 5-stage route: skip one stage, never seed from 4-step cache."""
+    for key in ("NL2SQL_SEED_FROM_4STEP", "NL2SQL_SEED_INCLUDE_DIRECT"):
+        os.environ.pop(key, None)
+    if pipeline_type == "5step_without_planner":
+        os.environ["NL2SQL_SKIP_PLANNER"] = "1"
+        os.environ.pop("NL2SQL_SKIP_REFINER", None)
+    elif pipeline_type == "5step_without_refiner":
+        os.environ["NL2SQL_SKIP_REFINER"] = "1"
+        os.environ.pop("NL2SQL_SKIP_PLANNER", None)
+    else:
+        raise ValueError(pipeline_type)
 
 
 def configure_pipeline(pipeline_type: str) -> None:
     """
-    Cấu hình đường dẫn và môi trường cho pipeline 4-step hoặc 6-step.
+    Configure paths and environment variables for a 4-, 5-, or 6-step pipeline.
+
+    5-step variants use the 6-step codebase with Planner or Refiner removed.
+    Every remaining stage calls the LLM (no 4-step early-stage seed).
     """
     global NL2SQL_BASE_DIR, PIPELINE_OUTPUT_DIR, PIPELINE_TYPE
+    global _CONFIGURED_PIPELINE_PATH
 
-    if pipeline_type not in ("4step", "6step"):
-        raise ValueError("pipeline_type must be '4step' or '6step'")
+    PIPELINE_TYPE = normalize_pipeline_type(pipeline_type)
 
-    PIPELINE_TYPE = pipeline_type
-
-    if pipeline_type == "4step":
+    if PIPELINE_TYPE == "4step":
         NL2SQL_BASE_DIR = Path("src") / "nl2sql_4step"
         PIPELINE_OUTPUT_DIR = OUTPUT_BASE_DIR / "nl2sql_4step"
-    else:
+        _clear_ablation_skip_flags()
+    elif PIPELINE_TYPE == "6step":
         NL2SQL_BASE_DIR = Path("src") / "nl2sql_6step"
         PIPELINE_OUTPUT_DIR = OUTPUT_BASE_DIR / "nl2sql_6step"
+        _clear_ablation_skip_flags()
+    elif PIPELINE_TYPE == "5step_without_planner":
+        NL2SQL_BASE_DIR = Path("src") / "nl2sql_6step"
+        PIPELINE_OUTPUT_DIR = OUTPUT_BASE_DIR / "nl2sql_5step" / "without_planner"
+        _apply_5step_route(PIPELINE_TYPE)
+    elif PIPELINE_TYPE == "5step_without_refiner":
+        NL2SQL_BASE_DIR = Path("src") / "nl2sql_6step"
+        PIPELINE_OUTPUT_DIR = OUTPUT_BASE_DIR / "nl2sql_5step" / "without_refiner"
+        _apply_5step_route(PIPELINE_TYPE)
+    else:
+        raise ValueError(f"Unhandled pipeline_type: {PIPELINE_TYPE}")
 
-    # Load environment variables từ .env file (nếu có)
+    PIPELINE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Root .env is the project's single source of API keys/model overrides.
+    # A pipeline-local .env remains an optional fallback for backward
+    # compatibility, but never overrides root or shell environment variables.
+    project_root = Path(__file__).resolve().parent
+    load_dotenv(project_root / ".env")
     load_dotenv(NL2SQL_BASE_DIR / ".env")  # type: ignore[arg-type]
 
-    # Thêm đường dẫn để import các module CrewAI (nl2sql_flow)
-    base_dir_str = str(NL2SQL_BASE_DIR)
+    # The 4-step and 6-step packages intentionally share the import name
+    # ``nl2sql_flow``. If a process switches pipelines, remove the old package
+    # from both sys.path and sys.modules before importing the new one.
+    base_dir_str = str(NL2SQL_BASE_DIR.resolve())
+    if _CONFIGURED_PIPELINE_PATH and _CONFIGURED_PIPELINE_PATH != base_dir_str:
+        sys.path = [
+            path
+            for path in sys.path
+            if str(Path(path).resolve()) != _CONFIGURED_PIPELINE_PATH
+        ]
+        for module_name in list(sys.modules):
+            if module_name == "nl2sql_flow" or module_name.startswith("nl2sql_flow."):
+                del sys.modules[module_name]
     if base_dir_str not in sys.path:
-        sys.path.append(base_dir_str)
+        sys.path.insert(0, base_dir_str)
+    _CONFIGURED_PIPELINE_PATH = base_dir_str
 
-    print(f"🔧 Đã cấu hình pipeline: {PIPELINE_TYPE} (base dir = {NL2SQL_BASE_DIR})")
+    skip_note = ""
+    if PIPELINE_TYPE == "5step_without_planner":
+        skip_note = " [skip Planner; full LLM]"
+    elif PIPELINE_TYPE == "5step_without_refiner":
+        skip_note = " [skip Refiner; full LLM]"
+    print(
+        f"🔧 Configured pipeline: {PIPELINE_TYPE} "
+        f"(base dir = {NL2SQL_BASE_DIR}){skip_note}"
+    )
+    print(f"   output = {PIPELINE_OUTPUT_DIR}")
+
+
+def compute_pipeline_signature() -> str:
+    """Hash code, prompts, and model routing so stale raw caches are rejected."""
+    if NL2SQL_BASE_DIR is None:
+        raise RuntimeError("Pipeline has not been configured")
+    digest = hashlib.sha256()
+    relative_files = (
+        "nl2sql_flow/main.py",
+        "nl2sql_flow/crews/nl2sql_crew/nl2sql_crew.py",
+        "nl2sql_flow/crews/nl2sql_crew/config/agents.yaml",
+        "nl2sql_flow/crews/nl2sql_crew/config/tasks.yaml",
+    )
+    digest.update(Path(__file__).read_bytes())
+    for relative_file in relative_files:
+        path = NL2SQL_BASE_DIR / relative_file
+        digest.update(relative_file.encode("utf-8"))
+        if path.is_file():
+            digest.update(path.read_bytes())
+    # Operational knobs should not invalidate resume caches.
+    signature_ignore = {
+        "NL2SQL_STEP_TIMEOUT_SECONDS",
+        "NL2SQL_STEP_MAX_RETRIES",
+        "NL2SQL_ABORT_ON_FAILURE",
+        "NL2SQL_RESUME_IGNORE_SIGNATURE",
+    }
+    for name in sorted(
+        key
+        for key in os.environ
+        if key.startswith("NL2SQL_") and key not in signature_ignore
+    ):
+        digest.update(name.encode("utf-8"))
+        digest.update(os.environ[name].encode("utf-8"))
+    digest.update(PIPELINE_TYPE.encode("utf-8"))
+    return digest.hexdigest()[:20]
+
+
+def assert_loaded_pipeline(flow_class: type) -> None:
+    """Fail fast if Python imported the other pipeline's shared package name."""
+    loaded_path = Path(inspect.getfile(flow_class)).resolve().as_posix()
+    expected_fragment = f"/src/nl2sql_{code_package_key()}/"
+    if expected_fragment not in loaded_path:
+        raise RuntimeError(
+            f"Loaded wrong pipeline module: expected {expected_fragment}, "
+            f"got {loaded_path}"
+        )
+
+
+_TRUE_ENV_VALUES = {"1", "true", "yes", "on", "enabled"}
+_FALSE_ENV_VALUES = {"0", "false", "no", "off", "disabled"}
+_SIX_STEP_TRACE_PHASES = (
+    "question_analysis",
+    "schema_selector",
+    "query_planning",
+    "generate_sql_direct",
+    "generate_sql_planned",
+    "refine_sql",
+    "validate_sql",
+)
+_DEFAULT_REFINER_MODEL = "gemini/gemini-2.5-flash"
+
+
+def env_flag(name: str, default: bool = False) -> bool:
+    """Read a strict boolean environment flag."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in _TRUE_ENV_VALUES:
+        return True
+    if normalized in _FALSE_ENV_VALUES:
+        return False
+    raise ValueError(f"{name} must be a boolean value")
+
+
+def count_trace_attempts(step_traces: List[Dict]) -> int:
+    """Count actual inference attempts, including failed retries."""
+    count = 0
+    for trace in step_traces:
+        try:
+            attempt = int(trace.get("attempt", 0))
+        except (TypeError, ValueError):
+            attempt = 0
+        if attempt > 0:
+            count += 1
+    return count
+
+
+def validate_configured_provider_keys() -> None:
+    """Fail before inference when a configured provider key is absent."""
+    if env_flag("USE_LOCAL_LLM", default=False):
+        return
+
+    if PIPELINE_TYPE == "4step":
+        configured_models = [
+            "gemini/gemini-2.5-flash",
+            "openai/gpt-4o",
+        ]
+    else:
+        # 6-step and 5-step variants share the same model env surface.
+        configured_models = [
+            os.getenv(
+                "NL2SQL_QUESTION_ANALYZER_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_QUESTION_ANALYZER_FALLBACK_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_SCHEMA_SELECTOR_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_QUERY_PLANNER_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_QUERY_PLANNER_FALLBACK_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_DIRECT_SQL_MODEL",
+                os.getenv("NL2SQL_SQL_EXPERT_MODEL", "openai/gpt-4o"),
+            ),
+            os.getenv(
+                "NL2SQL_PLANNED_SQL_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_PLANNED_SQL_FALLBACK_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_SQL_REFINER_MODEL",
+                _DEFAULT_REFINER_MODEL,
+            ),
+            os.getenv(
+                "NL2SQL_SQL_REFINER_FALLBACK_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+            os.getenv(
+                "NL2SQL_SQL_VALIDATOR_MODEL",
+                "gemini/gemini-2.5-flash",
+            ),
+        ]
+
+    provider_keys = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "claude": "ANTHROPIC_API_KEY",
+        "deepseek": "DEEPSEEK_API_KEY",
+        "gemini": "GEMINI_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "gpt": "OPENAI_API_KEY",
+    }
+    required_keys = set()
+    for model in configured_models:
+        normalized = str(model).strip().lower()
+        provider = normalized.split("/", 1)[0].split("-", 1)[0]
+        key_name = provider_keys.get(provider)
+        if key_name:
+            required_keys.add(key_name)
+    missing = sorted(
+        key_name
+        for key_name in required_keys
+        if not os.getenv(key_name, "").strip()
+    )
+    if missing:
+        raise RuntimeError(
+            "Missing API key(s) for configured models: "
+            + ", ".join(missing)
+        )
+
+
+def validate_six_step_trace(step_traces: List[Dict]) -> None:
+    """Validate logical phase order while allowing retries and skipped phases."""
+    phase_index = {
+        phase_name: index
+        for index, phase_name in enumerate(_SIX_STEP_TRACE_PHASES)
+    }
+    seen_phases = set()
+    terminal_trace_by_phase: Dict[str, Dict] = {}
+    last_phase_index = -1
+
+    for trace_index, trace in enumerate(step_traces):
+        step_name = trace.get("step_name")
+        if step_name not in phase_index:
+            raise RuntimeError(
+                f"Invalid 6-step trace entry {trace_index}: "
+                f"unknown step_name={step_name!r}"
+            )
+        current_phase_index = phase_index[step_name]
+        if current_phase_index < last_phase_index:
+            raise RuntimeError(
+                "Invalid 6-step trace order: "
+                f"{step_name!r} appears after "
+                f"{_SIX_STEP_TRACE_PHASES[last_phase_index]!r}"
+            )
+        last_phase_index = current_phase_index
+        seen_phases.add(step_name)
+        terminal_trace_by_phase[step_name] = trace
+
+    missing_phases = [
+        phase_name
+        for phase_name in _SIX_STEP_TRACE_PHASES
+        if phase_name not in seen_phases
+    ]
+    if missing_phases:
+        raise RuntimeError(
+            f"Invalid 6-step trace: missing logical phases {missing_phases}"
+        )
+    failed_terminal_phases = [
+        phase_name
+        for phase_name in _SIX_STEP_TRACE_PHASES
+        if not terminal_trace_by_phase[phase_name].get("success", False)
+        and not terminal_trace_by_phase[phase_name].get("skipped", False)
+    ]
+    if failed_terminal_phases:
+        raise RuntimeError(
+            "Invalid 6-step trace: phases did not finish successfully or "
+            f"skip explicitly: {failed_terminal_phases}"
+        )
+
+
+def fetch_anthropic_model_ids(
+    api_key: str,
+    *,
+    base_url: str = "https://api.anthropic.com",
+    timeout: int = 10,
+) -> set[str]:
+    """List model IDs visible to an Anthropic key without running inference."""
+    if not api_key.strip():
+        raise RuntimeError(
+            "Anthropic model preflight requires ANTHROPIC_API_KEY"
+        )
+
+    normalized_base = base_url.rstrip("/")
+    models_endpoint = (
+        f"{normalized_base}/models"
+        if normalized_base.endswith("/v1")
+        else f"{normalized_base}/v1/models"
+    )
+    model_ids: set[str] = set()
+    after_id = ""
+
+    for _ in range(20):
+        query = {"limit": 100}
+        if after_id:
+            query["after_id"] = after_id
+        request = Request(
+            f"{models_endpoint}?{urlencode(query)}",
+            method="GET",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "accept": "application/json",
+            },
+        )
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            raise RuntimeError(
+                "Anthropic model preflight failed "
+                f"with HTTP status {error.code}"
+            ) from error
+        except (URLError, TimeoutError) as error:
+            raise RuntimeError(
+                "Anthropic model preflight could not reach the models endpoint"
+            ) from error
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise RuntimeError(
+                "Anthropic model preflight returned invalid JSON"
+            ) from error
+
+        if not isinstance(payload, dict):
+            raise RuntimeError(
+                "Anthropic model preflight returned an invalid response shape"
+            )
+        data = payload.get("data")
+        if not isinstance(data, list):
+            raise RuntimeError(
+                "Anthropic model preflight response is missing model data"
+            )
+        model_ids.update(
+            item["id"]
+            for item in data
+            if isinstance(item, dict) and isinstance(item.get("id"), str)
+        )
+        if not payload.get("has_more"):
+            return model_ids
+        next_after_id = payload.get("last_id")
+        if not isinstance(next_after_id, str) or not next_after_id:
+            if data and isinstance(data[-1], dict):
+                next_after_id = data[-1].get("id")
+        if not isinstance(next_after_id, str) or not next_after_id:
+            raise RuntimeError(
+                "Anthropic model preflight pagination is missing last_id"
+            )
+        after_id = next_after_id
+
+    raise RuntimeError("Anthropic model preflight exceeded 20 model pages")
+
+
+def preflight_configured_refiner() -> None:
+    """Fail before paid inference when the six-step Anthropic model is absent."""
+    # 5-step without Refiner does not call the Refiner LLM.
+    if not uses_six_step_codebase() or env_flag("NL2SQL_SKIP_REFINER", default=False):
+        return
+    if env_flag("NL2SQL_SKIP_MODEL_PREFLIGHT", default=False):
+        print("[PREFLIGHT] Anthropic model check skipped by configuration.")
+        return
+
+    configured_model = os.getenv(
+        "NL2SQL_SQL_REFINER_MODEL",
+        _DEFAULT_REFINER_MODEL,
+    ).strip()
+    normalized_model = configured_model.lower()
+    if normalized_model.startswith("anthropic/"):
+        provider_model_id = configured_model.split("/", 1)[1]
+    elif normalized_model.startswith("claude-"):
+        provider_model_id = configured_model
+    else:
+        print("[PREFLIGHT] Refiner is not an Anthropic model; check not required.")
+        return
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    timeout = int(os.getenv("NL2SQL_MODEL_PREFLIGHT_TIMEOUT_SECONDS", "10"))
+    model_ids = fetch_anthropic_model_ids(
+        api_key,
+        base_url=os.getenv(
+            "ANTHROPIC_BASE_URL",
+            "https://api.anthropic.com",
+        ),
+        timeout=timeout,
+    )
+    if provider_model_id not in model_ids:
+        raise RuntimeError(
+            "Configured Anthropic Refiner model is unavailable to this API "
+            f"account: {provider_model_id}"
+        )
+    print(f"[PREFLIGHT] Anthropic Refiner available: {provider_model_id}")
 
 # Global tracking variables
 ai_request_count = 0
@@ -81,31 +525,31 @@ api_call_details = {
 
 
 def setup_environment():
-    """Setup môi trường và copy database cần thiết"""
+    """Set up the environment and copy the required databases."""
     global timing_metrics, PIPELINE_OUTPUT_DIR
     start_time = time.time()
 
     if PIPELINE_OUTPUT_DIR is None:
         raise RuntimeError(
-            "PIPELINE_OUTPUT_DIR chưa được cấu hình. Hãy gọi configure_pipeline() trước."
+            "PIPELINE_OUTPUT_DIR is not configured. Call configure_pipeline() first."
         )
 
-    print("[SETUP] Dang setup moi truong...")
+    print("[SETUP] Setting up the environment...")
 
-    # Tạo thư mục output nếu chưa có
+    # Create the output directory if it does not exist.
     os.makedirs(PIPELINE_OUTPUT_DIR, exist_ok=True)
 
-    # Copy database từ data/spider_data sang test-suite-sql-eval
+    # Copy databases from data/spider_data to test-suite-sql-eval.
     source_db_dir = SPIDER_DATA_DIR / 'database'
     target_db_dir = Path('experiments/test-suite-sql-eval/database')
 
     if source_db_dir.exists() and not target_db_dir.exists():
-        print(f"📁 Dang copy database tu {source_db_dir} sang {target_db_dir}")
+        print(f"📁 Copying databases from {source_db_dir} to {target_db_dir}")
         shutil.copytree(source_db_dir, target_db_dir)
     elif target_db_dir.exists():
-        print("✅ Database da ton tai trong test-suite-sql-eval")
+        print("✅ Databases already exist in test-suite-sql-eval")
     else:
-        print("❌ Khong tim thay database source")
+        print("❌ Database source directory not found")
         return False
 
     timing_metrics['setup_time'] = time.time() - start_time
@@ -142,9 +586,9 @@ def group_questions_by_db(spider_data):
 def collect_column_sample_values(db_id, table_schema, max_values=4, max_len=30):
     """Collect a few distinct sample values per TEXT column for value grounding.
 
-    Returns a list aligned with column_names_original ([] for '*', non-text
-    columns, or on any error). This lets agents see real literal casing/spelling
-    (e.g. 'Republic' vs 'republic') instead of guessing values.
+    Returns a list aligned with column_names_original ([] for '*', unsupported
+    columns, or on any error). Text samples preserve literal casing/spelling;
+    boolean samples expose database sentinels such as T/F or Y/N.
     """
     import sqlite3
 
@@ -154,7 +598,7 @@ def collect_column_sample_values(db_id, table_schema, max_values=4, max_len=30):
 
     db_file = SPIDER_DATA_DIR / 'database' / db_id / f'{db_id}.sqlite'
     if not db_file.exists():
-        print(f"⚠️  Không tìm thấy {db_file}, bỏ qua value grounding cho db '{db_id}'")
+        print(f"⚠️  {db_file} not found; skipping value grounding for db '{db_id}'")
         return samples
 
     try:
@@ -162,7 +606,10 @@ def collect_column_sample_values(db_id, table_schema, max_values=4, max_len=30):
         con.text_factory = lambda b: b.decode(errors='replace')
         tables = table_schema['table_names_original']
         for idx, (t_idx, col_name) in enumerate(columns):
-            if t_idx < 0 or idx >= len(types) or types[idx] != 'text':
+            column_type = (
+                str(types[idx]).lower() if idx < len(types) else ""
+            )
+            if t_idx < 0 or column_type not in {'text', 'boolean'}:
                 continue
             try:
                 rows = con.execute(
@@ -174,16 +621,20 @@ def collect_column_sample_values(db_id, table_schema, max_values=4, max_len=30):
                 pass  # per-column failure is non-fatal
         con.close()
         n_grounded = sum(1 for s in samples if s)
-        print(f"🔎 Value grounding: lấy giá trị mẫu cho {n_grounded} cột text của '{db_id}'")
+        print(
+            "🔎 Value grounding: collected sample values for "
+            f"{n_grounded} text/boolean columns in '{db_id}'"
+        )
     except Exception as e:
-        print(f"⚠️  Value grounding lỗi ({e}), tiếp tục không có sample values")
+        print(f"⚠️  Value grounding failed ({e}); continuing without sample values")
     return samples
 
 
 def get_test_questions(num_questions=40, db_id=None, seed=None):
-    """Lấy câu hỏi test từ Spider dev set với tùy chọn cố định database và seed.
+    """Get Spider dev-set questions with an optional database and random seed.
 
-    num_questions <= 0 nghĩa là lấy TOÀN BỘ câu hỏi của database (giữ nguyên thứ tự).
+    ``num_questions <= 0`` selects every question for the database in its
+    original order.
     """
     global timing_metrics
     start_time = time.time()
@@ -193,54 +644,64 @@ def get_test_questions(num_questions=40, db_id=None, seed=None):
 
     spider_data, tables_data = load_spider_dev_data()
 
-    # Đếm số câu hỏi theo database
-    print("🔍 Phân tích dữ liệu Spider dev set...")
+    # Count questions by database.
+    print("🔍 Analyzing the Spider dev set...")
     db_questions = group_questions_by_db(spider_data)
     db_counts = {db: len(qs) for db, qs in db_questions.items()}
 
     requested_db_id = db_id
 
-    # Lọc databases có >50 câu hỏi để hỗ trợ random benchmark nhanh
+    # Keep databases with more than 50 questions for quick random benchmarks.
     eligible_dbs = {db: count for db, count in db_counts.items() if count > 50}
-    print(f"📊 Tìm thấy {len(eligible_dbs)} databases có >50 câu hỏi:")
+    print(f"📊 Found {len(eligible_dbs)} databases with more than 50 questions:")
 
-    # Sắp xếp và hiển thị top databases
+    # Sort and display the top databases.
     sorted_dbs = sorted(eligible_dbs.items(), key=lambda x: x[1], reverse=True)
     for i, (db, count) in enumerate(sorted_dbs[:10], 1):
-        print(f"   {i}. {db}: {count} câu hỏi")
+        print(f"   {i}. {db}: {count} questions")
 
     if requested_db_id is not None:
         if requested_db_id not in db_questions:
             available_db_preview = ", ".join(sorted(db_questions.keys())[:15])
             raise ValueError(
-                f"db_id '{requested_db_id}' không tồn tại trong Spider dev set. Ví dụ db_id hợp lệ: {available_db_preview}"
+                f"db_id '{requested_db_id}' does not exist in the Spider dev set. "
+                f"Example valid db_id values: {available_db_preview}"
             )
         selected_db = requested_db_id
         available_questions = db_questions[selected_db]
-        print(f"\n🎯 Sử dụng database do người dùng chỉ định: '{selected_db}' với {len(available_questions)} câu hỏi")
+        print(
+            f"\n🎯 Using the user-specified database: '{selected_db}' "
+            f"with {len(available_questions)} questions"
+        )
     else:
-        # Chọn ngẫu nhiên một database có >50 câu hỏi để benchmark nhanh
+        # Randomly choose a database with more than 50 questions for a quick benchmark.
         selected_db = rng.choice(list(eligible_dbs.keys()))
         available_questions = db_questions[selected_db]
         print(
-            f"\n🎯 Đã chọn database ngẫu nhiên: '{selected_db}' với {len(available_questions)} câu hỏi"
+            f"\n🎯 Randomly selected database: '{selected_db}' "
+            f"with {len(available_questions)} questions"
         )
 
     if seed is not None:
-        print(f"🎲 Seed lấy mẫu: {seed}")
+        print(f"🎲 Sampling seed: {seed}")
 
-    # num_questions <= 0: lấy TOÀN BỘ câu hỏi của db theo thứ tự gốc (chế độ benchmark full)
+    # In full-benchmark mode, select every database question in its original order.
     if num_questions <= 0:
-        print(f"📋 Chế độ full-db: lấy toàn bộ {len(available_questions)} câu hỏi (không sample)")
+        print(
+            f"📋 Full-database mode: selecting all {len(available_questions)} "
+            "questions without sampling"
+        )
         selected_items = available_questions
     elif num_questions > len(available_questions):
         print(
-            f"⚠️  Yêu cầu {num_questions} câu hỏi nhưng chỉ có {len(available_questions)} câu. Lấy tất cả.")
+            f"⚠️  Requested {num_questions} questions, but only "
+            f"{len(available_questions)} are available. Selecting all questions."
+        )
         selected_items = available_questions
     else:
         selected_items = rng.sample(available_questions, num_questions)
 
-    # Tìm schema tương ứng và tạo test_questions
+    # Find the matching schema and build test_questions.
     test_questions = []
     table_schema = None
     for table in tables_data:
@@ -256,8 +717,14 @@ def get_test_questions(num_questions=40, db_id=None, seed=None):
                 'question_index': item.get('question_index', -1),
                 'db_id': item['db_id'],
                 'question': item['question'],
-                'gold_query': item['query'],  # Thêm ground truth
+                'gold_query': item['query'],  # Add the ground-truth query.
+                'table_names': table_schema.get(
+                    'table_names', table_schema['table_names_original']
+                ),
                 'table_names_original': table_schema['table_names_original'],
+                'column_names': table_schema.get(
+                    'column_names', table_schema['column_names_original']
+                ),
                 'column_names_original': table_schema['column_names_original'],
                 'column_types': table_schema['column_types'],
                 'foreign_keys': table_schema.get('foreign_keys', []),
@@ -266,7 +733,9 @@ def get_test_questions(num_questions=40, db_id=None, seed=None):
             })
 
     print(
-        f"\n📝 Đã random chọn {len(test_questions)} câu hỏi từ database '{selected_db}':")
+        f"\n📝 Prepared {len(test_questions)} test questions "
+        f"from database '{selected_db}':"
+    )
     for i, q in enumerate(test_questions, 1):
         print(f"   {i}. {q['question'][:70]}...")
 
@@ -312,29 +781,45 @@ def enhance_sql_query(sql_query: str, question_text: str, schema: dict) -> dict:
 
 
 def run_nl2sql_system(test_questions):
-    """Chạy hệ thống NL2SQL CrewAI"""
+    """Run the CrewAI NL2SQL system."""
     global ai_request_count, execution_metrics, timing_metrics, api_call_details, PIPELINE_OUTPUT_DIR, PIPELINE_TYPE
     start_time = time.time()
 
     if PIPELINE_OUTPUT_DIR is None:
         raise RuntimeError(
-            "PIPELINE_OUTPUT_DIR chưa được cấu hình. Hãy gọi configure_pipeline() trước."
+            "PIPELINE_OUTPUT_DIR is not configured. Call configure_pipeline() first."
         )
 
-    print("\n🤖 Đang chạy hệ thống NL2SQL CrewAI...")
+    strict_benchmark = env_flag("NL2SQL_STRICT_BENCHMARK", default=False)
+    abort_on_failure = env_flag("NL2SQL_ABORT_ON_FAILURE", default=False)
+    resume_ignore_signature = env_flag(
+        "NL2SQL_RESUME_IGNORE_SIGNATURE", default=False
+    )
+    validate_configured_provider_keys()
+    preflight_configured_refiner()
 
-    # Import các module cần thiết từ CrewAI
+    print("\n🤖 Running the CrewAI NL2SQL system...")
+
+    # Import the required CrewAI modules.
     try:
         from pydantic import BaseModel
+        import nl2sql_flow.main as nl2sql_main
         from nl2sql_flow.main import NL2SQLFlow, NLQuestions, SQLDbSchema, NL2SQLResult
+        assert_loaded_pipeline(NL2SQLFlow)
+        load_four_step_seed_file = getattr(
+            nl2sql_main, "load_four_step_seed_file", None
+        )
+        map_four_step_seed_to_six_steps = getattr(
+            nl2sql_main, "map_four_step_seed_to_six_steps", None
+        )
     except ImportError as e:
-        print(f"❌ Lỗi import module CrewAI: {e}")
-        print("💡 Hãy đảm bảo đã cài đặt crewai và các dependencies")
+        print(f"❌ Failed to import CrewAI modules: {e}")
+        print("💡 Make sure CrewAI and its dependencies are installed")
         return None
 
-    # Schema đã được load trong test_questions
+    # The schema is already loaded in test_questions.
 
-    # Tạo file CSV output (theo từng pipeline)
+    # Create a pipeline-specific CSV output file.
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     csv_filename = str(
         PIPELINE_OUTPUT_DIR / f'nl2sql_results_{PIPELINE_TYPE}_{timestamp}.csv'
@@ -350,23 +835,45 @@ def run_nl2sql_system(test_questions):
     results = []
     execution_metrics['total'] = len(test_questions)
 
-    # Thư mục lưu raw responses của từng agent theo từng câu hỏi
+    # Directory for storing each agent's raw responses by question.
     raw_responses_dir = PIPELINE_OUTPUT_DIR / 'raw_responses'
+    run_signature = compute_pipeline_signature()
 
     for i, question in enumerate(test_questions, 1):
         question_start_time = time.time()
         print(
-            f"\n📊 Xử lý câu hỏi {i}/{len(test_questions)}: {question['question'][:50]}...")
+            f"\n📊 Processing question {i}/{len(test_questions)}: "
+            f"{question['question'][:50]}..."
+        )
 
         q_index = question.get('question_index', i)
         raw_db_dir = raw_responses_dir / question['db_id']
         raw_file = raw_db_dir / f"q{q_index:04d}.json"
+        flow = None
+        step_traces: List[Dict] = []
+        question_api_calls = 0
+        api_calls_recorded = False
 
-        # Resume: nếu câu này đã có kết quả từ lần chạy trước thì dùng lại, không gọi API
+        # Reuse a previous result when available without calling the API again.
         if raw_file.exists():
             try:
                 with open(raw_file, 'r', encoding='utf-8') as f:
                     cached = json.load(f)
+                if cached.get('run_signature') != run_signature:
+                    if resume_ignore_signature:
+                        print(
+                            f"   ⚠️  Cache signature mismatch for {raw_file.name}; "
+                            "NL2SQL_RESUME_IGNORE_SIGNATURE=1 → reuse cache."
+                        )
+                    else:
+                        raise ValueError(
+                            "cache signature differs from the active code/prompts/models"
+                        )
+                if (
+                    cached.get('db_id') != question['db_id']
+                    or cached.get('question') != question['question']
+                ):
+                    raise ValueError("cache question identity mismatch")
                 result = {
                     'db_id': cached['db_id'],
                     'question': cached['question'],
@@ -383,60 +890,127 @@ def run_nl2sql_system(test_questions):
                 with open(csv_filename, 'a', newline='', encoding='utf-8') as csvfile:
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writerow(result)
-                print(f"   ⏩ Đã có kết quả từ lần chạy trước ({raw_file.name}), bỏ qua.")
+                api_call_details['per_question'].append({
+                    'question_id': i,
+                    'question': question['question'][:50] + '...',
+                    'api_calls': 0,
+                    'processing_time': time.time() - question_start_time,
+                    'success': bool(result['sql'] and not result['error']),
+                    'cache_hit': True,
+                })
+                print(f"   ⏩ Reusing previous result ({raw_file.name}); skipping.")
                 continue
             except Exception as e:
-                print(f"   ⚠️  Không đọc được cache {raw_file.name} ({e}), chạy lại câu này.")
+                print(
+                    f"   ⚠️  Could not read cache {raw_file.name} ({e}); "
+                    "rerunning this question."
+                )
 
         try:
-            # Chạy NL2SQL flow với schema đã có sẵn trong question
-            print("   🔄 Đang chạy multi-agent flow...")
+            # Run the NL2SQL flow with the schema already attached to the question.
+            print("   🔄 Running the multi-agent flow...")
 
-            # Track AI requests (estimate based on typical CrewAI flow)
-            # 4-step: khoảng 4 calls, 6-step: khoảng 6 calls
-            question_api_calls = 6 if PIPELINE_TYPE == "6step" else 4
-            ai_request_count += question_api_calls
-            api_call_details['total_agent_calls'] += question_api_calls
+            seed_steps = None
+            seed_meta = None
+            seed_root = os.getenv("NL2SQL_SEED_FROM_4STEP", "").strip()
+            if (
+                PIPELINE_TYPE == "6step"
+                and seed_root
+                and load_four_step_seed_file
+                and map_four_step_seed_to_six_steps
+            ):
+                four_raw = load_four_step_seed_file(
+                    Path(seed_root),
+                    question["db_id"],
+                    int(q_index),
+                    question["question"],
+                )
+                if four_raw:
+                    seed_steps = map_four_step_seed_to_six_steps(four_raw)
+                    seed_meta = {
+                        "seed_root": str(Path(seed_root).resolve()),
+                        "seeded_steps": sorted(seed_steps.keys()),
+                        "source_question_index": four_raw.get("question_index"),
+                        "source_db_id": four_raw.get("db_id"),
+                    }
+                    print(
+                        "   🌱 Hybrid 4→6 seed: "
+                        + (", ".join(seed_meta["seeded_steps"]) or "(none)")
+                    )
+                else:
+                    print(
+                        f"   ⚠️  No 4-step seed found for "
+                        f"{question['db_id']}/q{int(q_index):04d}; "
+                        "running the full 6-step pipeline."
+                    )
 
+            flow_kwargs = {}
+            if seed_steps is not None:
+                flow_kwargs["seed_steps"] = seed_steps
             flow = NL2SQLFlow(
                 _question=NLQuestions(
                     question=question['question'], db_id=question['db_id']),
                 _raw_schema=SQLDbSchema(
                     db_id=question['db_id'],
+                    table_names=question.get(
+                        'table_names', question['table_names_original']
+                    ),
                     table_names_original=question['table_names_original'],
+                    column_names=question.get(
+                        'column_names', question['column_names_original']
+                    ),
                     column_names_original=question['column_names_original'],
                     column_types=question['column_types'],
                     foreign_keys=question.get('foreign_keys', []),
                     primary_keys=question.get('primary_keys', []),
                     column_sample_values=question.get('column_sample_values', []),
-                )
+                ),
+                **flow_kwargs,
             )
             flow_result = flow.kickoff()
+            step_traces = getattr(flow, 'step_traces', [])
+            question_api_calls = count_trace_attempts(step_traces)
+            if uses_six_step_codebase():
+                validate_six_step_trace(step_traces)
+            ai_request_count += question_api_calls
+            api_call_details['total_agent_calls'] += question_api_calls
+            api_calls_recorded = True
 
             result = {
                 'db_id': flow_result.db_id,
                 'question': flow_result.question,
-                'gold_query': question['gold_query'],  # Thêm ground truth
+                'gold_query': question['gold_query'],  # Add the ground-truth query.
                 'sql': flow_result.result.sql,
                 'explain': flow_result.result.explain,
                 'error': flow_result.result.error,
             }
+            if strict_benchmark and (
+                not (result['sql'] or '').strip() or result['error']
+            ):
+                raise RuntimeError(
+                    "Strict benchmark received an empty or errored flow result: "
+                    f"{result['error'] or 'empty SQL'}"
+                )
 
-            # Lưu raw response của TẤT CẢ agent steps cho câu hỏi này
+            # Save raw responses from every agent step for this question.
             os.makedirs(raw_db_dir, exist_ok=True)
+            raw_payload = {
+                'question_index': q_index,
+                'pipeline': PIPELINE_TYPE,
+                'run_signature': run_signature,
+                'db_id': question['db_id'],
+                'question': question['question'],
+                'gold_query': question['gold_query'],
+                'steps': step_traces,
+                'final_sql': result['sql'],
+                'explain': result['explain'],
+                'error': result['error'],
+                'timestamp': datetime.now().isoformat(),
+            }
+            if seed_meta is not None:
+                raw_payload['hybrid_seed_from_4step'] = seed_meta
             with open(raw_file, 'w', encoding='utf-8') as f:
-                json.dump({
-                    'question_index': q_index,
-                    'pipeline': PIPELINE_TYPE,
-                    'db_id': question['db_id'],
-                    'question': question['question'],
-                    'gold_query': question['gold_query'],
-                    'steps': getattr(flow, 'step_traces', []),
-                    'final_sql': result['sql'],
-                    'explain': result['explain'],
-                    'error': result['error'],
-                    'timestamp': datetime.now().isoformat(),
-                }, f, ensure_ascii=False, indent=2)
+                json.dump(raw_payload, f, ensure_ascii=False, indent=2)
 
             # ===== PHASE 1 IMPROVEMENT: SQL Enhancement =====
             if result['sql'] and not result['error']:
@@ -473,7 +1047,7 @@ def run_nl2sql_system(test_questions):
 
             results.append(result)
 
-            # Ghi vào CSV
+            # Write the result to CSV.
             with open(csv_filename, 'a', newline='', encoding='utf-8') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writerow(result)
@@ -483,56 +1057,45 @@ def run_nl2sql_system(test_questions):
             api_call_details['per_question'].append({
                 'question_id': i,
                 'question': question['question'][:50] + '...',
-                # +1 for enhancement if successful
-                'api_calls': question_api_calls + (1 if result['sql'] and not result['error'] else 0),
+                # enhance_sql_query is local formatting, not a provider request.
+                'api_calls': question_api_calls,
                 'processing_time': question_time,
                 'success': bool(result['sql'] and not result['error'])
             })
 
             print(
-                f"   ✅ Hoàn thành: SQL = {result['sql'][:50]}... (⏱️ {question_time:.1f}s)")
+                f"   ✅ Completed: SQL = {result['sql'][:50]}... "
+                f"(⏱️ {question_time:.1f}s)"
+            )
 
         except Exception as e:
-            print(f"   ❌ Lỗi xử lý câu hỏi: {e}")
+            print(f"   ❌ Failed to process question: {e}")
             execution_metrics['failed'] += 1
-            failed_api_calls = 2  # Even failed attempts make some AI requests
-            ai_request_count += failed_api_calls
-            api_call_details['total_agent_calls'] += failed_api_calls
+            partial_steps = getattr(flow, 'step_traces', []) if flow else []
+            failed_api_calls = count_trace_attempts(partial_steps)
+            if not api_calls_recorded:
+                ai_request_count += failed_api_calls
+                api_call_details['total_agent_calls'] += failed_api_calls
 
-            # Placeholder always-wrong SQL keeps one eval line per question (never drop failures)
-            error_result = {
-                'db_id': question['db_id'],
-                'question': question['question'],
-                'gold_query': question['gold_query'],
-                'sql': 'SELECT 1',
-                'explain': '',
-                'error': str(e),
-            }
-            results.append(error_result)
-
-            # Lưu trace lỗi vào file riêng (.error.json) để resume vẫn chạy lại câu này
+            # Save a separate .error.json trace so resuming retries this question.
             try:
                 os.makedirs(raw_db_dir, exist_ok=True)
                 error_trace_file = raw_db_dir / f"q{q_index:04d}.error.json"
-                partial_steps = getattr(locals().get('flow'), 'step_traces', []) if 'flow' in locals() else []
                 with open(error_trace_file, 'w', encoding='utf-8') as f:
                     json.dump({
                         'question_index': q_index,
                         'pipeline': PIPELINE_TYPE,
+                        'run_signature': run_signature,
                         'db_id': question['db_id'],
                         'question': question['question'],
                         'gold_query': question['gold_query'],
                         'steps': partial_steps,
+                        'api_calls': failed_api_calls,
                         'error': str(e),
                         'timestamp': datetime.now().isoformat(),
                     }, f, ensure_ascii=False, indent=2)
             except Exception as log_err:
-                print(f"   ⚠️  Không lưu được error trace: {log_err}")
-
-            # Ghi lỗi vào CSV
-            with open(csv_filename, 'a', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writerow(error_result)
+                print(f"   ⚠️  Could not save the error trace: {log_err}")
 
             # Track failed question timing and API calls
             question_time = time.time() - question_start_time
@@ -544,9 +1107,42 @@ def run_nl2sql_system(test_questions):
                 'success': False
             })
 
+            # Keep one evaluation line even in strict mode so multi-question
+            # smokes can finish EX scoring. Provider/parse failures count as
+            # wrong via the SELECT 1 placeholder; error.json forces resume.
+            # Abort mode stops the whole process after retries are exhausted.
+            if abort_on_failure:
+                print(
+                    "   🛑 NL2SQL_ABORT_ON_FAILURE=1: stopping process after "
+                    f"failed question {i}/{len(test_questions)}."
+                )
+                raise RuntimeError(
+                    f"Aborting pipeline after question failure: {e}"
+                ) from e
+
+            if strict_benchmark:
+                print(
+                    "   ⚠️  Strict benchmark mode: recording failure and "
+                    "continuing (SELECT 1 placeholder for EX)."
+                )
+
+            error_result = {
+                'db_id': question['db_id'],
+                'question': question['question'],
+                'gold_query': question['gold_query'],
+                'sql': 'SELECT 1',
+                'explain': '',
+                'error': str(e),
+            }
+            results.append(error_result)
+            with open(csv_filename, 'a', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writerow(error_result)
+
     timing_metrics['nl2sql_processing_time'] = time.time() - start_time
     print(
-        f"\n✅ Hoàn thành chạy NL2SQL system. Kết quả được lưu tại: {csv_filename}")
+        f"\n✅ NL2SQL system run completed. Results saved to: {csv_filename}"
+    )
     print(
         f"⏱️  NL2SQL processing completed in {timing_metrics['nl2sql_processing_time']:.2f}s")
     return csv_filename, results
@@ -631,28 +1227,29 @@ def normalize_sql_for_spider(sql: str) -> str:
 
 
 def convert_csv_to_evaluation_format(csv_filename, output_dir=None):
-    """Convert CSV output sang format đánh giá.
+    """Convert CSV output to the evaluation format.
 
-    output_dir: nếu được truyền (ví dụ thư mục per-db), gold/predict sẽ lưu vào đó
-    thay vì thư mục output chung của pipeline.
+    If ``output_dir`` is provided (for example, a per-database directory), save
+    gold and prediction files there instead of in the pipeline's shared output
+    directory.
     """
     global timing_metrics, PIPELINE_OUTPUT_DIR
     start_time = time.time()
 
     if PIPELINE_OUTPUT_DIR is None:
         raise RuntimeError(
-            "PIPELINE_OUTPUT_DIR chưa được cấu hình. Hãy gọi configure_pipeline() trước."
+            "PIPELINE_OUTPUT_DIR is not configured. Call configure_pipeline() first."
         )
 
-    print("\n🔄 Đang convert CSV sang format đánh giá...")
+    print("\n🔄 Converting CSV to the evaluation format...")
 
-    # Lưu gold/predict vào thư mục output của pipeline (hoặc thư mục per-db nếu chỉ định)
+    # Save gold/prediction files in the pipeline or specified per-database directory.
     target_dir = Path(output_dir) if output_dir else PIPELINE_OUTPUT_DIR
     os.makedirs(target_dir, exist_ok=True)
     predict_file = target_dir / 'predict.sql'
     gold_file = target_dir / 'gold.sql'
 
-    # Đọc CSV results (đã có ground truth trong CSV)
+    # Read CSV results, which already include the ground-truth queries.
     with open(csv_filename, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
 
@@ -663,7 +1260,8 @@ def convert_csv_to_evaluation_format(csv_filename, output_dir=None):
             for row in reader:
                 if not row.get('gold_query'):
                     print(
-                        f"⚠️ Thiếu ground truth cho: {row['question'][:50]}...")
+                        f"⚠️ Missing ground truth for: {row['question'][:50]}..."
+                    )
                     continue
                 # Always emit one gold/pred line per question; empty/failed SQL → always-wrong placeholder
                 pred_raw = (row.get('sql') or '').strip() or 'SELECT 1'
@@ -673,7 +1271,7 @@ def convert_csv_to_evaluation_format(csv_filename, output_dir=None):
                 matched_count += 1
 
     timing_metrics['conversion_time'] = time.time() - start_time
-    print(f"✅ Convert hoàn thành. Matched {matched_count} câu hỏi")
+    print(f"✅ Conversion completed. Matched {matched_count} questions")
     print(f"   📄 Gold file: {gold_file}")
     print(f"   📄 Predict file: {predict_file}")
     print(
@@ -683,37 +1281,38 @@ def convert_csv_to_evaluation_format(csv_filename, output_dir=None):
 
 
 def run_evaluation(gold_file, predict_file):
-    """Chạy đánh giá bằng test-suite-sql-eval"""
+    """Run evaluation with test-suite-sql-eval."""
     global timing_metrics
     start_time = time.time()
 
-    print("\n📊 Đang chạy đánh giá bằng test-suite-sql-eval...")
+    print("\n📊 Running evaluation with test-suite-sql-eval...")
 
-    # Chuyển đến thư mục test-suite-sql-eval
+    # Locate the test-suite-sql-eval directory.
     eval_dir = Path('experiments/test-suite-sql-eval')
     current_dir = Path.cwd()
 
     try:
-        # Copy tables.json từ data chung sang test-suite-sql-eval trước khi chạy evaluation
+        # Copy tables.json from shared data before running evaluation.
         tables_source = current_dir / DATA_DIR / 'tables.json'
         tables_target = eval_dir / 'tables.json'
 
         if not tables_target.exists() and tables_source.exists():
             print(
-                f"📁 Đang copy tables.json từ {tables_source} sang {tables_target}")
+                f"📁 Copying tables.json from {tables_source} to {tables_target}"
+            )
             shutil.copy2(tables_source, tables_target)
         elif tables_target.exists():
-            print("✅ File tables.json đã tồn tại trong test-suite-sql-eval")
+            print("✅ tables.json already exists in test-suite-sql-eval")
         else:
-            print(f"⚠️ Không tìm thấy file tables.json tại {tables_source}")
+            print(f"⚠️ tables.json not found at {tables_source}")
 
-        # Không cần chuyển thư mục, chạy từ thư mục gốc với đường dẫn đầy đủ
+        # Run from the project root with full paths; no directory change is needed.
 
-        # Sử dụng Python từ virtual environment và chạy từ thư mục gốc
+        # Use Python from the virtual environment and run from the project root.
         import sys
         python_executable = sys.executable
 
-        # Chạy evaluation từ thư mục gốc với đường dẫn đầy đủ
+        # Run evaluation from the project root with full paths.
         eval_script = os.path.join(
             current_dir, 'experiments', 'test-suite-sql-eval', 'evaluation.py')
         gold_path = str(current_dir / gold_file)
@@ -723,7 +1322,7 @@ def run_evaluation(gold_file, predict_file):
         tables_path = os.path.join(
             current_dir, 'experiments', 'test-suite-sql-eval', 'tables.json')
 
-        # Kiểm tra các file cần thiết trước khi chạy evaluation với đường dẫn đầy đủ
+        # Validate the required files using full paths before evaluation.
         required_files = {
             'evaluation.py': eval_script,
             'tables.json': tables_path,
@@ -737,7 +1336,7 @@ def run_evaluation(gold_file, predict_file):
                 missing_files.append(f"{name} ({path})")
 
         if missing_files:
-            print(f"❌ Thiếu các file cần thiết: {missing_files}")
+            print(f"❌ Missing required files: {missing_files}")
             return None
 
         cmd = [
@@ -750,17 +1349,17 @@ def run_evaluation(gold_file, predict_file):
             '--plug_value'
         ]
 
-        print(f"🚀 Chạy lệnh: {' '.join(cmd)}")
+        print(f"🚀 Running command: {' '.join(cmd)}")
 
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=300)
 
-        print("\n📋 Kết quả đánh giá:")
+        print("\n📋 Evaluation results:")
         print("=" * 50)
         if result.stdout:
             print(result.stdout)
         else:
-            print("Không có output từ evaluation script")
+            print("The evaluation script produced no output")
 
         if result.stderr:
             print("\n⚠️ Warnings/Errors:")
@@ -768,7 +1367,8 @@ def run_evaluation(gold_file, predict_file):
 
         if result.returncode != 0:
             print(
-                f"❌ Evaluation script kết thúc với mã lỗi: {result.returncode}")
+                f"❌ Evaluation script exited with error code: {result.returncode}"
+            )
             return None
 
         # Parse evaluation results
@@ -780,21 +1380,21 @@ def run_evaluation(gold_file, predict_file):
 
     except Exception as e:
         timing_metrics['evaluation_time'] = time.time() - start_time
-        print(f"❌ Lỗi khi chạy đánh giá: {e}")
+        print(f"❌ Evaluation failed: {e}")
         print(
             f"⏱️  Evaluation failed after {timing_metrics['evaluation_time']:.2f}s")
         return None
 
 
 def parse_evaluation_results(eval_output):
-    """Parse kết quả evaluation để lấy metrics"""
+    """Parse evaluation output to extract metrics."""
     metrics = {'execution_rate': 0.0, 'exact_match_rate': 0.0}
 
     if not eval_output:
         return metrics
 
     try:
-        # Parse execution accuracy từ bảng EXECUTION ACCURACY
+        # Parse execution accuracy from the EXECUTION ACCURACY table.
         # Format: execution            1.000                0.857                0.750                0.667                0.789
         exec_match = re.search(
             r'execution\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+([\d.]+)', eval_output)
@@ -802,7 +1402,7 @@ def parse_evaluation_results(eval_output):
             metrics['execution_rate'] = float(
                 exec_match.group(1)) * 100  # Convert to percentage
 
-        # Parse exact match accuracy từ bảng EXACT MATCHING ACCURACY
+        # Parse exact-match accuracy from the EXACT MATCHING ACCURACY table.
         # Format: exact match          1.000                0.429                0.625                0.333                0.526
         exact_match = re.search(
             r'exact match\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+([\d.]+)', eval_output)
@@ -810,7 +1410,7 @@ def parse_evaluation_results(eval_output):
             metrics['exact_match_rate'] = float(
                 exact_match.group(1)) * 100  # Convert to percentage
 
-        # Alternative patterns nếu không tìm thấy
+        # Try alternative patterns if the primary patterns are not found.
         if metrics['execution_rate'] == 0.0:
             exec_alt = re.search(
                 r'execution.*?([\d.]+)$', eval_output, re.MULTILINE | re.IGNORECASE)
@@ -829,17 +1429,17 @@ def parse_evaluation_results(eval_output):
             f"📊 Parsed metrics: execution={metrics['execution_rate']:.1f}%, exact_match={metrics['exact_match_rate']:.1f}%")
 
     except Exception as e:
-        print(f"⚠️ Lỗi parse evaluation results: {e}")
+        print(f"⚠️ Failed to parse evaluation results: {e}")
         print(f"📋 Eval output sample: {eval_output[:500]}...")
 
     return metrics
 
 
 def print_detailed_api_statistics():
-    """In thống kê chi tiết về API calls"""
+    """Print detailed API call statistics."""
     global api_call_details
 
-    print(f"\n🤖 THỐNG KÊ CHI TIẾT API CALLS")
+    print("\n🤖 DETAILED API CALL STATISTICS")
     print("=" * 80)
 
     # Summary
@@ -848,22 +1448,30 @@ def print_detailed_api_statistics():
         1 for q in api_call_details['per_question'] if q['success'])
     failed_questions = total_questions - successful_questions
 
-    print(f"📊 Tổng quan API calls:")
-    print(f"   • Tổng agent calls: {api_call_details['total_agent_calls']}")
-    print(f"   • Enhancement calls: {api_call_details['enhancement_calls']}")
+    print("📊 API call overview:")
+    print(f"   • Total agent calls: {api_call_details['total_agent_calls']}")
     print(
-        f"   • Trung bình API calls/câu hỏi: {api_call_details['total_agent_calls']/total_questions:.1f}")
+        "   • Local SQL formatting passes: "
+        f"{api_call_details['enhancement_calls']}"
+    )
+    average_api_calls = (
+        api_call_details['total_agent_calls'] / total_questions
+        if total_questions
+        else 0.0
+    )
+    print(f"   • Average API calls per question: {average_api_calls:.1f}")
 
     if api_call_details['per_question']:
         avg_time_per_question = sum(
             q['processing_time'] for q in api_call_details['per_question']) / len(api_call_details['per_question'])
         print(
-            f"   • Thời gian trung bình/câu hỏi: {avg_time_per_question:.2f}s")
+            f"   • Average time per question: {avg_time_per_question:.2f}s"
+        )
 
         # Top 5 slowest questions
         slowest_questions = sorted(
             api_call_details['per_question'], key=lambda x: x['processing_time'], reverse=True)[:5]
-        print(f"\n⏱️  Top 5 câu hỏi xử lý chậm nhất:")
+        print("\n⏱️  Top 5 slowest questions:")
         for i, q in enumerate(slowest_questions, 1):
             status = "✅" if q['success'] else "❌"
             print(
@@ -871,15 +1479,15 @@ def print_detailed_api_statistics():
 
 
 def print_detailed_timing_breakdown():
-    """In breakdown chi tiết về thời gian"""
+    """Print a detailed timing breakdown."""
     global timing_metrics
 
-    print(f"\n⏱️  PHÂN TÍCH THỜI GIAN CHI TIẾT")
+    print("\n⏱️  DETAILED TIMING BREAKDOWN")
     print("=" * 80)
 
     total_time = sum(timing_metrics.values())
 
-    print(f"📊 Breakdown thời gian thực thi:")
+    print("📊 Execution-time breakdown:")
     for phase, time_spent in timing_metrics.items():
         percentage = (time_spent / total_time * 100) if total_time > 0 else 0
         phase_name = phase.replace('_', ' ').title()
@@ -890,7 +1498,7 @@ def print_detailed_timing_breakdown():
 
 
 def print_results_table(run_number, num_questions, eval_metrics, total_time):
-    """In bảng kết quả theo format yêu cầu"""
+    """Print the results table in the required format."""
     global ai_request_count, execution_metrics, timing_metrics, api_call_details
 
     # Calculate execution rate
@@ -904,44 +1512,46 @@ def print_results_table(run_number, num_questions, eval_metrics, total_time):
         'exact_match_rate', 0.0) if eval_metrics else 0.0
 
     print("\n" + "=" * 90)
-    print("📊 KẾT QUẢ CHẠY PIPELINE NL2SQL")
+    print("📊 NL2SQL PIPELINE RESULTS")
     print("=" * 90)
-    print("| Lượt | Câu hỏi | Execute(%) | Exact Match(%) | Agent Calls | Enhancement | Thời gian(s) |")
+    print("| Run | Questions | Execute(%) | Exact Match(%) | Agent Calls | Enhancement | Time(s) |")
     print("|------|---------|------------|----------------|-------------|-------------|--------------|")
     print(
         f"|  {run_number:2d}  |   {num_questions:2d}    |   {eval_exec_rate:5.1f}    |     {exact_match_rate:5.1f}      |     {api_call_details['total_agent_calls']:2d}      |      {api_call_details['enhancement_calls']:2d}     |   {total_time:6.1f}    |")
     print("=" * 90)
 
-    print(f"\n📈 Chi tiết thống kê:")
-    print(f"   • Tổng câu hỏi xử lý: {execution_metrics['total']}")
-    print(f"   • Thành công tạo SQL: {execution_metrics['successful']}")
-    print(f"   • Thất bại: {execution_metrics['failed']}")
-    print(f"   • Tỉ lệ thành công hệ thống: {exec_rate:.1f}%")
-    print(f"   • Tỉ lệ execute đúng (test-suite): {eval_exec_rate:.1f}%")
-    print(f"   • Tỉ lệ exact match: {exact_match_rate:.1f}%")
+    print("\n📈 Detailed statistics:")
+    print(f"   • Total questions processed: {execution_metrics['total']}")
+    print(f"   • SQL generation successes: {execution_metrics['successful']}")
+    print(f"   • Failures: {execution_metrics['failed']}")
+    print(f"   • System success rate: {exec_rate:.1f}%")
+    print(f"   • Correct execution rate (test suite): {eval_exec_rate:.1f}%")
+    print(f"   • Exact-match rate: {exact_match_rate:.1f}%")
     print(
-        f"   • Tổng agent API calls: {api_call_details['total_agent_calls']}")
+        f"   • Total agent API calls: {api_call_details['total_agent_calls']}"
+    )
     print(
-        f"   • Tổng enhancement calls: {api_call_details['enhancement_calls']}")
-    print(f"   • Tổng tất cả API calls: {ai_request_count}")
-    print(f"   • Thời gian thực thi: {total_time:.1f} giây")
+        f"   • Total enhancement calls: {api_call_details['enhancement_calls']}"
+    )
+    print(f"   • Total API calls: {ai_request_count}")
+    print(f"   • Execution time: {total_time:.1f} seconds")
 
     # Print detailed breakdowns
     print_detailed_timing_breakdown()
     print_detailed_api_statistics()
 
 
-# ===== Benchmark full dev set theo từng database (round 2) =====
+# ===== Benchmark the full dev set by database (round 2) =====
 
 def get_progress_file() -> Path:
-    """Progress file riêng cho từng pipeline."""
+    """Return the pipeline-specific progress file."""
     if PIPELINE_OUTPUT_DIR is None:
-        raise RuntimeError("Hãy gọi configure_pipeline() trước.")
+        raise RuntimeError("Call configure_pipeline() first.")
     return PIPELINE_OUTPUT_DIR / 'benchmark_progress.json'
 
 
 def init_or_load_progress() -> dict:
-    """Load progress file; nếu chưa có thì khởi tạo danh sách db theo số câu giảm dần."""
+    """Load progress or initialize databases in descending question-count order."""
     progress_file = get_progress_file()
     if progress_file.exists():
         with open(progress_file, 'r', encoding='utf-8') as f:
@@ -949,7 +1559,7 @@ def init_or_load_progress() -> dict:
 
     spider_data, _ = load_spider_dev_data()
     db_questions = group_questions_by_db(spider_data)
-    # Chạy db nhiều câu trước, db ít câu sau; tie-break theo tên cho ổn định
+    # Run larger databases first and use the name as a stable tie-breaker.
     db_order = sorted(db_questions.keys(), key=lambda db: (-len(db_questions[db]), db))
 
     progress = {
@@ -970,7 +1580,7 @@ def init_or_load_progress() -> dict:
         },
     }
     save_progress(progress)
-    print(f"🆕 Đã khởi tạo progress file: {progress_file} ({len(db_order)} databases)")
+    print(f"🆕 Initialized progress file: {progress_file} ({len(db_order)} databases)")
     return progress
 
 
@@ -989,9 +1599,12 @@ def get_next_pending_db(progress: dict) -> str | None:
 
 
 def print_benchmark_status(progress: dict) -> None:
-    print(f"\n📋 TIẾN ĐỘ BENCHMARK ({progress['pipeline']}) — thứ tự chạy: nhiều câu trước")
+    print(
+        f"\n📋 BENCHMARK PROGRESS ({progress['pipeline']}) "
+        "— largest databases first"
+    )
     print("=" * 78)
-    print(f"{'#':>3}  {'Database':<28} {'Câu hỏi':>8} {'Trạng thái':<10} {'EX%':>6} {'EM%':>6}")
+    print(f"{'#':>3}  {'Database':<28} {'Questions':>9} {'Status':<10} {'EX%':>6} {'EM%':>6}")
     print("-" * 78)
     total_q = done_q = 0
     for i, db in enumerate(progress['db_order'], 1):
@@ -1003,22 +1616,33 @@ def print_benchmark_status(progress: dict) -> None:
         em = f"{info['exact_match_rate']:.1f}" if info['exact_match_rate'] is not None else '-'
         print(f"{i:>3}  {db:<28} {info['num_questions']:>8} {info['status']:<10} {ex:>6} {em:>6}")
     print("-" * 78)
-    print(f"Tổng: {done_q}/{total_q} câu hỏi đã hoàn thành")
+    print(f"Total: {done_q}/{total_q} questions completed")
     next_db = get_next_pending_db(progress)
     if next_db:
-        print(f"➡️  Database kế tiếp: '{next_db}' — chạy bằng: python run_complete_nl2sql_pipeline.py --pipeline {progress['pipeline']} --next")
+        print(
+            f"➡️  Next database: '{next_db}' — run: "
+            "python run_complete_nl2sql_pipeline.py "
+            f"--pipeline {progress['pipeline']} --next"
+        )
     else:
-        print(f"🎉 Đã chạy xong toàn bộ! Tổng hợp kết quả: python run_complete_nl2sql_pipeline.py --pipeline {progress['pipeline']} --aggregate")
+        print(
+            "🎉 All databases completed! Aggregate results with: "
+            "python run_complete_nl2sql_pipeline.py "
+            f"--pipeline {progress['pipeline']} --aggregate"
+        )
 
 
 def run_single_db_benchmark(db_id: str) -> None:
-    """Chạy TOÀN BỘ câu hỏi của một database, lưu raw responses, đánh giá và cập nhật tiến độ."""
+    """Run all questions for one database, save responses, evaluate, and update progress."""
     progress = init_or_load_progress()
     if db_id not in progress['databases']:
-        raise ValueError(f"db_id '{db_id}' không có trong danh sách benchmark.")
+        raise ValueError(f"db_id '{db_id}' is not in the benchmark list.")
 
     info = progress['databases'][db_id]
-    print(f"\n🚀 Bắt đầu benchmark database '{db_id}' ({info['num_questions']} câu hỏi, pipeline {PIPELINE_TYPE})")
+    print(
+        f"\n🚀 Starting benchmark for database '{db_id}' "
+        f"({info['num_questions']} questions, pipeline {PIPELINE_TYPE})"
+    )
 
     progress['databases'][db_id]['status'] = 'running'
     save_progress(progress)
@@ -1026,14 +1650,14 @@ def run_single_db_benchmark(db_id: str) -> None:
     start_time = time.time()
     try:
         if not setup_environment():
-            raise RuntimeError("Setup environment thất bại")
+            raise RuntimeError("Environment setup failed")
 
-        # num_questions=0 -> lấy toàn bộ câu hỏi của db (resume tự động qua raw_responses)
+        # num_questions=0 selects all database questions and resumes from raw_responses.
         test_questions = get_test_questions(num_questions=0, db_id=db_id)
 
         csv_filename, results = run_nl2sql_system(test_questions)
         if not csv_filename:
-            raise RuntimeError("NL2SQL system thất bại")
+            raise RuntimeError("NL2SQL system failed")
 
         per_db_dir = PIPELINE_OUTPUT_DIR / 'per_db' / db_id
         gold_file, predict_file = convert_csv_to_evaluation_format(csv_filename, output_dir=per_db_dir)
@@ -1053,19 +1677,23 @@ def run_single_db_benchmark(db_id: str) -> None:
         })
         save_progress(progress)
 
-        print(f"\n✅ Database '{db_id}' hoàn thành trong {duration:.1f}s")
+        print(f"\n✅ Database '{db_id}' completed in {duration:.1f}s")
         print_benchmark_status(progress)
     except Exception as e:
         progress = init_or_load_progress()
         progress['databases'][db_id]['status'] = 'failed'
         save_progress(progress)
-        print(f"\n❌ Database '{db_id}' thất bại: {e}")
-        print(f"💡 Chạy lại (tự resume câu đã xong): python run_complete_nl2sql_pipeline.py --pipeline {PIPELINE_TYPE} --run-db {db_id}")
+        print(f"\n❌ Database '{db_id}' failed: {e}")
+        print(
+            "💡 Retry while automatically resuming completed questions: "
+            "python run_complete_nl2sql_pipeline.py "
+            f"--pipeline {PIPELINE_TYPE} --run-db {db_id}"
+        )
         raise
 
 
 def aggregate_all_dbs() -> None:
-    """Gộp gold/predict của tất cả db đã xong và chạy đánh giá trên toàn bộ dev set."""
+    """Combine completed gold/prediction files and evaluate the full dev set."""
     progress = init_or_load_progress()
     per_db_root = PIPELINE_OUTPUT_DIR / 'per_db'
     agg_dir = PIPELINE_OUTPUT_DIR / 'full_dev'
@@ -1084,7 +1712,7 @@ def aggregate_all_dbs() -> None:
             missing.append(db)
 
     if missing:
-        print(f"⚠️  Các database chưa có kết quả: {missing}")
+        print(f"⚠️  Databases without results: {missing}")
 
     agg_gold = agg_dir / 'gold.sql'
     agg_pred = agg_dir / 'predict.sql'
@@ -1093,17 +1721,21 @@ def aggregate_all_dbs() -> None:
     with open(agg_pred, 'w', encoding='utf-8') as f:
         f.writelines(pred_lines)
 
-    print(f"📦 Đã gộp {len(gold_lines)} cặp gold/predict vào {agg_dir}")
+    print(f"📦 Combined {len(gold_lines)} gold/prediction pairs in {agg_dir}")
     if not setup_environment():
-        print("❌ Setup environment thất bại")
+        print("❌ Environment setup failed")
         return
     eval_metrics = run_evaluation(agg_gold, agg_pred)
     if eval_metrics:
-        print(f"\n🏁 KẾT QUẢ FULL DEV SET ({PIPELINE_TYPE}): EX={eval_metrics['execution_rate']:.1f}%  EM={eval_metrics['exact_match_rate']:.1f}%")
+        print(
+            f"\n🏁 FULL DEV-SET RESULTS ({PIPELINE_TYPE}): "
+            f"EX={eval_metrics['execution_rate']:.1f}%  "
+            f"EM={eval_metrics['exact_match_rate']:.1f}%"
+        )
 
 
 def main():
-    """Hàm chính chạy toàn bộ pipeline"""
+    """Run the complete pipeline."""
     global ai_request_count, execution_metrics, timing_metrics, api_call_details
 
     # Reset tracking variables
@@ -1122,63 +1754,89 @@ def main():
         'total_agent_calls': 0
     }
 
-    # Parse tham số dòng lệnh
+    # Parse command-line arguments.
     parser = argparse.ArgumentParser(
-        description="Chạy complete NL2SQL pipeline với lựa chọn 4-step hoặc 6-step."
+        description=(
+            "Run the complete NL2SQL pipeline: 4step | 6step | "
+            "5step_without_planner | 5step_without_refiner."
+        )
     )
     parser.add_argument(
         "--pipeline",
-        choices=["4step", "6step"],
+        choices=[
+            "4step",
+            "6step",
+            "5step_without_planner",
+            "5step_without_refiner",
+            "without_planner",
+            "without_refiner",
+            "5step_no_planner",
+            "5step_no_refiner",
+            "no_planner",
+            "no_refiner",
+        ],
         default="4step",
-        help="Chọn loại pipeline NL2SQL: 4step (mặc định) hoặc 6step."
+        help=(
+            "Pipeline: 4step | 6step | 5step_without_planner | 5step_without_refiner "
+            "(aliases: without_planner, without_refiner)."
+        ),
     )
     parser.add_argument(
         "--num_questions",
         type=int,
         default=50,
-        help="Số câu hỏi sẽ được lấy từ Spider để test pipeline (mặc định: 50; 0 = toàn bộ câu hỏi của db).",
+        help=(
+            "Number of Spider questions used to test the pipeline "
+            "(default: 50; 0 = all questions in the database)."
+        ),
     )
     parser.add_argument(
         "--db_id",
         type=str,
         default=None,
-        help="Cố định một database Spider cụ thể để so sánh công bằng giữa các lần chạy.",
+        help="Use a specific Spider database for fair comparisons across runs.",
     )
     parser.add_argument(
         "--seed",
         type=int,
         default=42,
-        help="Seed cố định cho việc chọn mẫu câu hỏi trong database (mặc định: 42).",
+        help="Random seed for sampling database questions (default: 42).",
     )
-    # Chế độ benchmark full dev set theo từng database
+    # Full dev-set benchmark mode by database.
     parser.add_argument(
         "--next",
         action="store_true",
-        help="Chạy TOÀN BỘ câu hỏi của database kế tiếp chưa hoàn thành rồi dừng (benchmark mode).",
+        help=(
+            "Run all questions for the next incomplete database, then stop "
+            "(benchmark mode)."
+        ),
     )
     parser.add_argument(
         "--run-db",
         type=str,
         default=None,
         dest="run_db",
-        help="Chạy TOÀN BỘ câu hỏi của một database cụ thể trong benchmark mode (tự resume).",
+        help=(
+            "Run all questions for a specific database in benchmark mode "
+            "with automatic resume."
+        ),
     )
     parser.add_argument(
         "--status",
         action="store_true",
-        help="In tiến độ benchmark theo từng database rồi thoát.",
+        help="Print benchmark progress by database, then exit.",
     )
     parser.add_argument(
         "--aggregate",
         action="store_true",
-        help="Gộp kết quả tất cả database đã chạy và đánh giá trên toàn bộ dev set.",
+        help="Combine completed database results and evaluate the full dev set.",
     )
     args = parser.parse_args()
 
-    # Cấu hình pipeline tương ứng
+    # Configure the selected pipeline.
     configure_pipeline(args.pipeline)
 
-    # ==== Benchmark mode: chạy theo từng database ====
+    # ==== Benchmark mode: run one database at a time ====
     if args.status:
         print_benchmark_status(init_or_load_progress())
         return
@@ -1193,38 +1851,41 @@ def main():
         else:
             target_db = get_next_pending_db(init_or_load_progress())
             if target_db is None:
-                print("🎉 Tất cả database đã hoàn thành. Dùng --aggregate để lấy kết quả full dev set.")
+                print(
+                    "🎉 All databases are complete. Use --aggregate to obtain "
+                    "full dev-set results."
+                )
                 return
         run_single_db_benchmark(target_db)
         return
 
-    print(f"🚀 Bắt đầu chạy Complete NL2SQL Pipeline ({args.pipeline})")
+    print(f"🚀 Starting the complete NL2SQL pipeline ({args.pipeline})")
     print("=" * 60)
 
     start_time = time.time()
 
     # 1. Setup environment
     if not setup_environment():
-        print("❌ Setup environment thất bại")
+        print("❌ Environment setup failed")
         return
 
-    # 2. Lấy câu hỏi test (số lượng cấu hình bằng tham số dòng lệnh)
+    # 2. Get test questions using the command-line question count.
     test_questions = get_test_questions(
         num_questions=args.num_questions,
         db_id=args.db_id,
         seed=args.seed,
     )
 
-    # 3. Chạy NL2SQL system
+    # 3. Run the NL2SQL system.
     csv_filename, results = run_nl2sql_system(test_questions)
     if not csv_filename:
-        print("❌ NL2SQL system thất bại")
+        print("❌ NL2SQL system failed")
         return
 
     # 4. Convert format
     gold_file, predict_file = convert_csv_to_evaluation_format(csv_filename)
 
-    # 5. Chạy evaluation
+    # 5. Run evaluation.
     eval_metrics = run_evaluation(gold_file, predict_file)
 
     end_time = time.time()
@@ -1233,8 +1894,8 @@ def main():
     # 6. Print results table
     print_results_table(1, len(test_questions), eval_metrics, duration)
 
-    print("\n📁 Các file được tạo:")
-    print(f"   - CSV kết quả: {csv_filename}")
+    print("\n📁 Generated files:")
+    print(f"   - Results CSV: {csv_filename}")
     print(f"   - Gold SQL: {gold_file}")
     print(f"   - Predict SQL: {predict_file}")
 

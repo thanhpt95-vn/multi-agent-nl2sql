@@ -101,19 +101,19 @@ To evaluate the generated SQL queries, navigate to the `test-suite-sql-eval` dir
 
 The system uses three different agents, all powered by Gemini 2.0 Flash for consistency and optimal performance:
 
-1. **Schema Selector** (Gemini 2.0 Flash)
+1. **Schema Selector** (Gemini 2.5 Flash)
    - Analyzes the natural language question and database schema
    - Filters out irrelevant tables, columns, and keys
    - Produces a simplified JSON schema containing only components relevant to the question
 
-2. **SQL Expert** (Gemini 2.0 Flash)
+2. **SQL Expert** (Gemini 2.5 Flash)
    - Generates SQL queries based on the natural language question and filtered schema
    - Returns the SQL query as a single line with no line breaks
 
-3. **SQL Validator** (Gemini 2.0 Flash)
+3. **SQL Validator** (Gemini 2.5 Flash)
    - Validates the syntax, logic, and structure of the generated SQL query
    - Fixes errors if detected
    - Provides an explanation of what the SQL query does
    - Returns an error message if the query cannot be fixed
 
-The multi-agent approach with unified Gemini 2.0 Flash model ensures consistent performance, reduced latency, and cost-effectiveness while maintaining high accuracy in SQL generation.
+The multi-agent approach with unified Gemini 2.5 Flash model ensures consistent performance, reduced latency, and cost-effectiveness while maintaining high accuracy in SQL generation.
